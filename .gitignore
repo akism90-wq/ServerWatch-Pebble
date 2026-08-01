@@ -1,0 +1,5 @@
+# Pebble build output
+build/
+
+# Waf build lock
+.lock-waf_linux_build
