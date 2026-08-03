@@ -4,26 +4,75 @@
 
 #include "../services/server_status_service.h"
 
+typedef enum
+{
+    HOME_DESTINATION_ATTENTION = 0,
+    HOME_DESTINATION_SERVER,
+    HOME_DESTINATION_STORAGE,
+    HOME_DESTINATION_DOWNLOADS,
+    HOME_DESTINATION_COUNT
+} HomeDestination;
+
+typedef Window *(*WindowCreateFunction)(void);
+typedef void (*WindowDestroyFunction)(Window *window);
+
+typedef struct
+{
+    Window *window;
+    WindowCreateFunction create;
+    WindowDestroyFunction destroy;
+} WindowDescriptor;
+
 static SimpleMenuLayer *s_menu_layer;
 static SimpleMenuSection s_menu_section;
-static SimpleMenuItem s_menu_items[4];
-static Window *s_attention_window;
+static SimpleMenuItem s_menu_items[HOME_DESTINATION_COUNT];
+
+static WindowDescriptor s_destinations[HOME_DESTINATION_COUNT] = {
+    [HOME_DESTINATION_ATTENTION] = {
+        .window = NULL,
+        .create = attention_window_create,
+        .destroy = attention_window_destroy,
+    },
+    [HOME_DESTINATION_SERVER] = {
+        .window = NULL,
+        .create = server_window_create,
+        .destroy = server_window_destroy,
+    },
+    [HOME_DESTINATION_STORAGE] = {
+        .window = NULL,
+        .create = storage_window_create,
+        .destroy = storage_window_destroy,
+    },
+    [HOME_DESTINATION_DOWNLOADS] = {
+        .window = NULL,
+        .create = downloads_window_create,
+        .destroy = downloads_window_destroy,
+    },
+};
 
 static char s_storage_text[16];
 static char s_downloads_text[20];
 
-static void prv_attention_selected(int index, void *context)
+static void prv_destination_selected(int index, void *context)
 {
-    if (s_attention_window == NULL) {
-        s_attention_window = attention_window_create();
+    if ((index < 0) || (index >= HOME_DESTINATION_COUNT)) {
+        return;
     }
 
-    window_stack_push(s_attention_window, true);
+    WindowDescriptor *const destination = &s_destinations[index];
+
+    if (destination->window == NULL) {
+        destination->window = destination->create();
+    }
+
+    if (destination->window != NULL) {
+        window_stack_push(destination->window, true);
+    }
 }
 
 static void prv_window_load(Window *window)
 {
-    Layer *window_layer = window_get_root_layer(window);
+    Layer *const window_layer = window_get_root_layer(window);
     const GRect bounds = layer_get_bounds(window_layer);
     const ServerStatus status = server_status_service_get();
 
@@ -49,30 +98,33 @@ static void prv_window_load(Window *window)
         );
     }
 
-    s_menu_items[0] = (SimpleMenuItem) {
+    s_menu_items[HOME_DESTINATION_ATTENTION] = (SimpleMenuItem) {
         .title = "Attention",
         .subtitle = status.has_attention ? "Issues found" : "No issues",
-        .callback = prv_attention_selected,
+        .callback = prv_destination_selected,
     };
 
-    s_menu_items[1] = (SimpleMenuItem) {
+    s_menu_items[HOME_DESTINATION_SERVER] = (SimpleMenuItem) {
         .title = "Server",
         .subtitle = status.server_online ? "Online" : "Offline",
+        .callback = prv_destination_selected,
     };
 
-    s_menu_items[2] = (SimpleMenuItem) {
+    s_menu_items[HOME_DESTINATION_STORAGE] = (SimpleMenuItem) {
         .title = "Storage",
         .subtitle = s_storage_text,
+        .callback = prv_destination_selected,
     };
 
-    s_menu_items[3] = (SimpleMenuItem) {
+    s_menu_items[HOME_DESTINATION_DOWNLOADS] = (SimpleMenuItem) {
         .title = "Downloads",
         .subtitle = s_downloads_text,
+        .callback = prv_destination_selected,
     };
 
     s_menu_section = (SimpleMenuSection) {
         .title = "ServerWatch",
-        .num_items = 4,
+        .num_items = HOME_DESTINATION_COUNT,
         .items = s_menu_items,
     };
 
@@ -84,39 +136,53 @@ static void prv_window_load(Window *window)
         NULL
     );
 
-    layer_add_child(
-        window_layer,
-        simple_menu_layer_get_layer(s_menu_layer)
-    );
+    if (s_menu_layer != NULL) {
+        layer_add_child(
+            window_layer,
+            simple_menu_layer_get_layer(s_menu_layer)
+        );
+    }
 }
 
 static void prv_window_unload(Window *window)
 {
-    simple_menu_layer_destroy(s_menu_layer);
-    s_menu_layer = NULL;
+    if (s_menu_layer != NULL) {
+        simple_menu_layer_destroy(s_menu_layer);
+        s_menu_layer = NULL;
+    }
 
-    if (s_attention_window != NULL) {
-        attention_window_destroy(s_attention_window);
-        s_attention_window = NULL;
+    for (int index = 0;
+         index < HOME_DESTINATION_COUNT;
+         ++index) {
+        WindowDescriptor *const destination = &s_destinations[index];
+
+        if (destination->window != NULL) {
+            destination->destroy(destination->window);
+            destination->window = NULL;
+        }
     }
 }
 
 Window *home_window_create(void)
 {
-    Window *window = window_create();
+    Window *const window = window_create();
 
-    window_set_window_handlers(
-        window,
-        (WindowHandlers) {
-            .load = prv_window_load,
-            .unload = prv_window_unload,
-        }
-    );
+    if (window != NULL) {
+        window_set_window_handlers(
+            window,
+            (WindowHandlers) {
+                .load = prv_window_load,
+                .unload = prv_window_unload,
+            }
+        );
+    }
 
     return window;
 }
 
 void home_window_destroy(Window *window)
 {
-    window_destroy(window);
+    if (window != NULL) {
+        window_destroy(window);
+    }
 }
