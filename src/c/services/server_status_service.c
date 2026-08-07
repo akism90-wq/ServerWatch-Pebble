@@ -15,6 +15,17 @@ ServerStatus server_status_service_get(void)
         .updated_text = "5 sec ago",
 
         .storage_used_percent = 16,
+
+        .storage_used_tb = 1.8f,
+        .storage_free_tb = 9.3f,
+        .storage_total_tb = 11.1f,
+
+        .movies_gb = 389.0f,
+        .tv_gb = 734.0f,
+        .immich_gb = 124.0f,
+        .downloads_gb = 4.0f,
+        .other_gb = 560.0f,
+
         .active_downloads = 0,
 
         .services = {
