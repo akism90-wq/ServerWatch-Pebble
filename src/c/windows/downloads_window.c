@@ -1,71 +1,183 @@
 #include "downloads_window.h"
 
+#include <stdio.h>
+
+#include "../services/server_status_service.h"
+#include "../ui/download_card.h"
+
+#define DOWNLOAD_CARD_COUNT 2
+#define DOWNLOADS_CONTENT_HEIGHT 360
+
+static ScrollLayer *s_scroll_layer;
 static TextLayer *s_title_layer;
-static TextLayer *s_status_layer;
+static TextLayer *s_updated_layer;
+
+static DownloadCard *s_download_cards[DOWNLOAD_CARD_COUNT];
+
+static char s_updated_text[48];
 
 static void prv_window_load(Window *window)
 {
-    Layer *window_layer = window_get_root_layer(window);
-    const GRect bounds = layer_get_bounds(window_layer);
+    Layer *const window_layer =
+        window_get_root_layer(window);
+
+    const GRect bounds =
+        layer_get_bounds(window_layer);
+
+    const ServerStatus status =
+        server_status_service_get();
+
+    snprintf(
+        s_updated_text,
+        sizeof(s_updated_text),
+        "Updated\n%s",
+        status.updated_text
+    );
+
+    s_scroll_layer = scroll_layer_create(bounds);
+
+    scroll_layer_set_content_size(
+        s_scroll_layer,
+        GSize(bounds.size.w, DOWNLOADS_CONTENT_HEIGHT)
+    );
+
+    scroll_layer_set_click_config_onto_window(
+        s_scroll_layer,
+        window
+    );
 
     s_title_layer = text_layer_create(
-        GRect(0, 20, bounds.size.w, 30)
+        GRect(0, 8, bounds.size.w, 30)
     );
-    text_layer_set_text(s_title_layer, "Downloads");
-    text_layer_set_text_alignment(
+
+    text_layer_set_text(
         s_title_layer,
-        GTextAlignmentCenter
+        "Downloads"
     );
+
     text_layer_set_font(
         s_title_layer,
         fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD)
     );
 
-    s_status_layer = text_layer_create(
-        GRect(0, 70, bounds.size.w, 30)
-    );
-    text_layer_set_text(s_status_layer, "None active");
     text_layer_set_text_alignment(
-        s_status_layer,
+        s_title_layer,
         GTextAlignmentCenter
     );
 
-    layer_add_child(
-        window_layer,
+    for (int index = 0;
+         index < DOWNLOAD_CARD_COUNT;
+         ++index) {
+        const DownloadStatus *const download =
+            &status.downloads[index];
+
+        s_download_cards[index] =
+            download_card_create(
+                GRect(
+                    12,
+                    44 + (index * 132),
+                    bounds.size.w - 24,
+                    124
+                ),
+                download->name,
+                download->progress_percent,
+                download->speed_text,
+                download->eta_text,
+                download->size_mb,
+                download->suspicious
+            );
+    }
+
+    s_updated_layer = text_layer_create(
+        GRect(12, 314, bounds.size.w - 24, 40)
+    );
+
+    text_layer_set_text(
+        s_updated_layer,
+        s_updated_text
+    );
+
+    text_layer_set_font(
+        s_updated_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_14)
+    );
+
+    text_layer_set_text_alignment(
+        s_updated_layer,
+        GTextAlignmentLeft
+    );
+
+    scroll_layer_add_child(
+        s_scroll_layer,
         text_layer_get_layer(s_title_layer)
+    );
+
+    for (int index = 0;
+         index < DOWNLOAD_CARD_COUNT;
+         ++index) {
+        if (s_download_cards[index] != NULL) {
+            scroll_layer_add_child(
+                s_scroll_layer,
+                download_card_get_layer(
+                    s_download_cards[index]
+                )
+            );
+        }
+    }
+
+    scroll_layer_add_child(
+        s_scroll_layer,
+        text_layer_get_layer(s_updated_layer)
     );
 
     layer_add_child(
         window_layer,
-        text_layer_get_layer(s_status_layer)
+        scroll_layer_get_layer(s_scroll_layer)
     );
 }
 
 static void prv_window_unload(Window *window)
 {
-    text_layer_destroy(s_status_layer);
-    s_status_layer = NULL;
+    text_layer_destroy(s_updated_layer);
+    s_updated_layer = NULL;
+
+    for (int index = 0;
+         index < DOWNLOAD_CARD_COUNT;
+         ++index) {
+        download_card_destroy(
+            s_download_cards[index]
+        );
+
+        s_download_cards[index] = NULL;
+    }
 
     text_layer_destroy(s_title_layer);
     s_title_layer = NULL;
+
+    scroll_layer_destroy(s_scroll_layer);
+    s_scroll_layer = NULL;
 }
 
 Window *downloads_window_create(void)
 {
-    Window *window = window_create();
+    Window *const window = window_create();
 
-    window_set_window_handlers(
-        window,
-        (WindowHandlers) {
-            .load = prv_window_load,
-            .unload = prv_window_unload,
-        }
-    );
+    if (window != NULL) {
+        window_set_window_handlers(
+            window,
+            (WindowHandlers) {
+                .load = prv_window_load,
+                .unload = prv_window_unload,
+            }
+        );
+    }
 
     return window;
 }
 
 void downloads_window_destroy(Window *window)
 {
-    window_destroy(window);
+    if (window != NULL) {
+        window_destroy(window);
+    }
 }

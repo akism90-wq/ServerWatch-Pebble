@@ -93,14 +93,14 @@ static void prv_window_load(Window *window)
         snprintf(
             s_downloads_text,
             sizeof(s_downloads_text),
-            "%d active",
+            "%d active downloads",
             status.active_downloads
         );
     }
 
     s_menu_items[HOME_DESTINATION_ATTENTION] = (SimpleMenuItem) {
         .title = "Attention",
-        .subtitle = status.has_attention ? "Issues found" : "No issues",
+        .subtitle = status.has_attention ? "Attention required" : "No issues",
         .callback = prv_destination_selected,
     };
 
