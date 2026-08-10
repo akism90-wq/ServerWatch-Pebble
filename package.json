@@ -23,7 +23,19 @@
       "watchface": false
     },
     "messageKeys": [
-      "dummy"
+      "serverName",
+      "serverOnline",
+      "cpuTenths",
+      "ramTenths",
+      "temperatureTenths",
+      "loadHundredths",
+      "uptimeSeconds",
+      "jellyfinOnline",
+      "qbittorrentOnline",
+      "sonarrOnline",
+      "radarrOnline",
+      "prowlarrOnline",
+      "immichOnline"
     ],
     "resources": {
       "media": []

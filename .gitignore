@@ -3,3 +3,6 @@ build/
 
 # Waf build lock
 .lock-waf_linux_build
+
+# Local PebbleKit JS development configuration
+src/pkjs/config.local.js

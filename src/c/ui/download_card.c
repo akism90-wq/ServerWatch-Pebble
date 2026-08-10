@@ -211,12 +211,15 @@ DownloadCard *download_card_create(
             GRect(0, 76, frame.size.w, 24)
         );
 
+    const int16_t size_text_x =
+        suspicious ? 12 : 0;        
+
     card->size_layer =
         text_layer_create(
             GRect(
-                12,
+                size_text_x,
                 100,
-                frame.size.w - 12,
+                frame.size.w - size_text_x,
                 24
             )
         );

@@ -118,16 +118,16 @@ static void prv_window_load(Window *window)
         window_get_root_layer(window);
     const GRect bounds =
         layer_get_bounds(window_layer);
-    const ServerStatus status =
+    const ServerStatus *const status = 
         server_status_service_get();
 
-    prv_format_metric_values(&status);
+    prv_format_metric_values(status);
 
     snprintf(
         s_updated_text,
         sizeof(s_updated_text),
         "Updated\n%s",
-        status.updated_text
+        status->updated_text
     );
 
     s_scroll_layer = scroll_layer_create(bounds);

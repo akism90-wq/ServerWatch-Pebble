@@ -77,6 +77,48 @@ static void prv_format_metric_values(const ServerStatus *status)
     );
 }
 
+static StatusIndicatorState prv_server_summary_state(
+    const ServerStatus *status)
+{
+    if (!status->server_online)
+    {
+        return STATUS_INDICATOR_CRITICAL;
+    }
+
+    for (int index = 0;
+         index < SERVER_SERVICE_COUNT;
+         ++index)
+    {
+        if (!status->services[index].online)
+        {
+            return STATUS_INDICATOR_WARNING;
+        }
+    }
+
+    return STATUS_INDICATOR_HEALTHY;
+}
+
+static const char *prv_server_summary_text(
+    const ServerStatus *status)
+{
+    if (!status->server_online)
+    {
+        return "Offline";
+    }
+
+    for (int index = 0;
+         index < SERVER_SERVICE_COUNT;
+         ++index)
+    {
+        if (!status->services[index].online)
+        {
+            return "Warning";
+        }
+    }
+
+    return "Online";
+}
+
 static StatusIndicatorState prv_state_from_online(bool online)
 {
     return online
@@ -88,15 +130,15 @@ static void prv_window_load(Window *window)
 {
     Layer *const window_layer = window_get_root_layer(window);
     const GRect bounds = layer_get_bounds(window_layer);
-    const ServerStatus status = server_status_service_get();
+    const ServerStatus *const status = server_status_service_get();
 
-    prv_format_metric_values(&status);
+    prv_format_metric_values(status);
 
     snprintf(
         s_updated_text,
         sizeof(s_updated_text),
         "Updated\n%s",
-        status.updated_text
+        status->updated_text
     );
 
     s_scroll_layer = scroll_layer_create(bounds);
@@ -117,7 +159,7 @@ static void prv_window_load(Window *window)
 
     text_layer_set_text(
         s_server_title_layer,
-        "Server Status"
+        status->server_name
     );
 
     text_layer_set_font(
@@ -132,8 +174,8 @@ static void prv_window_load(Window *window)
 
     s_server_status_row = status_row_create(
         GRect(12, 42, bounds.size.w - 24, 24),
-        status.server_online ? "Online" : "Offline",
-        prv_state_from_online(status.server_online)
+        prv_server_summary_text(status),
+        prv_server_summary_state(status)
     );
 
     status_row_set_emphasized(
@@ -168,7 +210,7 @@ static void prv_window_load(Window *window)
     s_metric_rows[SERVER_METRIC_UPTIME] = metric_row_create(
         GRect(12, 168, bounds.size.w - 24, 24),
         "Uptime",
-        status.uptime_text
+        status->uptime_text
     );
 
     s_services_title_layer = text_layer_create(
@@ -200,8 +242,8 @@ static void prv_window_load(Window *window)
                 bounds.size.w - 24,
                 24
             ),
-            status.services[index].name,
-            prv_state_from_online(status.services[index].online)
+            status->services[index].name,
+            prv_state_from_online(status->services[index].online)
         );
     }
 

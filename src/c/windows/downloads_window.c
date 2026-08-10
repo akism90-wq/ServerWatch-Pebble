@@ -5,7 +5,7 @@
 #include "../services/server_status_service.h"
 #include "../ui/download_card.h"
 
-#define DOWNLOAD_CARD_COUNT 2
+#define DOWNLOAD_CARD_COUNT SERVER_DOWNLOAD_COUNT
 #define DOWNLOADS_CONTENT_HEIGHT 360
 
 static ScrollLayer *s_scroll_layer;
@@ -24,14 +24,14 @@ static void prv_window_load(Window *window)
     const GRect bounds =
         layer_get_bounds(window_layer);
 
-    const ServerStatus status =
+    const ServerStatus *const status = 
         server_status_service_get();
 
     snprintf(
         s_updated_text,
         sizeof(s_updated_text),
         "Updated\n%s",
-        status.updated_text
+        status->updated_text
     );
 
     s_scroll_layer = scroll_layer_create(bounds);
@@ -69,7 +69,7 @@ static void prv_window_load(Window *window)
          index < DOWNLOAD_CARD_COUNT;
          ++index) {
         const DownloadStatus *const download =
-            &status.downloads[index];
+            &status->downloads[index];
 
         s_download_cards[index] =
             download_card_create(

@@ -43,14 +43,13 @@ static void prv_window_load(Window *window)
     const GRect bounds =
         layer_get_bounds(window_layer);
 
-    const ServerStatus status =
-        server_status_service_get();
+    const ServerStatus *const status = server_status_service_get();
 
     snprintf(
         s_updated_text,
         sizeof(s_updated_text),
         "Updated\n%s",
-        status.updated_text
+        status->updated_text
     );
 
     s_scroll_layer = scroll_layer_create(bounds);
@@ -85,10 +84,10 @@ static void prv_window_load(Window *window)
     );
 
     for (int index = 0;
-         index < status.attention_item_count;
+         index < status->attention_item_count;
          ++index) {
         const AttentionItem *const item =
-            &status.attention_items[index];
+            &status->attention_items[index];
 
         s_attention_rows[index] =
             status_row_create(
@@ -130,7 +129,7 @@ static void prv_window_load(Window *window)
     );
 
     for (int index = 0;
-         index < status.attention_item_count;
+         index < status->attention_item_count;
          ++index) {
         if (s_attention_rows[index] != NULL) {
             scroll_layer_add_child(

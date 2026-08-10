@@ -4,15 +4,31 @@
 #include <stdint.h>
 
 #define SERVER_SERVICE_COUNT 6
-#define SERVER_DOWNLOAD_COUNT 2
-#define SERVER_ATTENTION_ITEM_COUNT 3
+#define SERVER_DOWNLOAD_COUNT 3
+#define SERVER_ATTENTION_ITEM_COUNT 8
+#define SERVER_NAME_LENGTH 32
+
+/*
+ * Fixed-size storage is intentional.
+ *
+ * ServerStatus will shortly be populated from AppMessage callbacks.
+ * Owning the character data here prevents the model from retaining
+ * pointers into temporary Pebble/AppMessage buffers.
+ */
+#define DOWNLOAD_NAME_LENGTH 64
+#define DOWNLOAD_SPEED_TEXT_LENGTH 16
+#define DOWNLOAD_ETA_TEXT_LENGTH 16
+#define ATTENTION_TEXT_LENGTH 64
+#define SERVICE_NAME_LENGTH 16
+#define UPTIME_TEXT_LENGTH 24
+#define UPDATED_TEXT_LENGTH 24
 
 typedef struct
 {
-    const char *name;
+    char name[DOWNLOAD_NAME_LENGTH];
     int progress_percent;
-    const char *speed_text;
-    const char *eta_text;
+    char speed_text[DOWNLOAD_SPEED_TEXT_LENGTH];
+    char eta_text[DOWNLOAD_ETA_TEXT_LENGTH];
 
     uint32_t size_mb;
     bool suspicious;
@@ -27,18 +43,20 @@ typedef enum
 
 typedef struct
 {
-    const char *text;
+    char text[ATTENTION_TEXT_LENGTH];
     AttentionSeverity severity;
 } AttentionItem;
 
 typedef struct
 {
-    const char *name;
+    char name[SERVICE_NAME_LENGTH];
     bool online;
 } ServiceStatus;
 
 typedef struct
 {
+    char server_name[SERVER_NAME_LENGTH];
+
     bool has_attention;
     bool server_online;
 
@@ -47,8 +65,8 @@ typedef struct
     float temperature_celsius;
     float load_average;
 
-    const char *uptime_text;
-    const char *updated_text;
+    char uptime_text[UPTIME_TEXT_LENGTH];
+    char updated_text[UPDATED_TEXT_LENGTH];
 
     int storage_used_percent;
 
@@ -66,8 +84,8 @@ typedef struct
 
     int attention_item_count;
     AttentionItem attention_items[SERVER_ATTENTION_ITEM_COUNT];
-    
+
     DownloadStatus downloads[SERVER_DOWNLOAD_COUNT];
-    
+
     ServiceStatus services[SERVER_SERVICE_COUNT];
 } ServerStatus;

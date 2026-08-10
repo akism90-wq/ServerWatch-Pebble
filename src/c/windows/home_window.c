@@ -74,16 +74,16 @@ static void prv_window_load(Window *window)
 {
     Layer *const window_layer = window_get_root_layer(window);
     const GRect bounds = layer_get_bounds(window_layer);
-    const ServerStatus status = server_status_service_get();
+    const ServerStatus *const status = server_status_service_get();
 
     snprintf(
         s_storage_text,
         sizeof(s_storage_text),
         "%d%% used",
-        status.storage_used_percent
+        status->storage_used_percent
     );
 
-    if (status.active_downloads == 0) {
+    if (status->active_downloads == 0) {
         snprintf(
             s_downloads_text,
             sizeof(s_downloads_text),
@@ -94,19 +94,19 @@ static void prv_window_load(Window *window)
             s_downloads_text,
             sizeof(s_downloads_text),
             "%d active downloads",
-            status.active_downloads
+            status->active_downloads
         );
     }
 
     s_menu_items[HOME_DESTINATION_ATTENTION] = (SimpleMenuItem) {
         .title = "Attention",
-        .subtitle = status.has_attention ? "Attention required" : "No issues",
+        .subtitle = status->has_attention ? "Attention required" : "No issues",
         .callback = prv_destination_selected,
     };
 
     s_menu_items[HOME_DESTINATION_SERVER] = (SimpleMenuItem) {
         .title = "Server",
-        .subtitle = status.server_online ? "Online" : "Offline",
+        .subtitle = status->server_online ? "Online" : "Offline",
         .callback = prv_destination_selected,
     };
 
