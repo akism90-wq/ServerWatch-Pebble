@@ -1,6 +1,7 @@
 #include <pebble.h>
 #include "services/server_status_service.h"
 #include "windows/home_window.h"
+#include "windows/server_window.h"
 
 static Window *s_home_window;
 
@@ -112,6 +113,8 @@ static void prv_inbox_received_handler(
             APP_LOG_LEVEL_INFO,
             "Received live service states");
     }
+
+    server_window_refresh();
 }
 
 static void prv_init(void)
@@ -119,9 +122,7 @@ static void prv_init(void)
     app_message_register_inbox_received(prv_inbox_received_handler);
 
     const AppMessageResult open_result =
-        app_message_open(
-            app_message_inbox_size_maximum(),
-            app_message_outbox_size_maximum());
+        app_message_open(512, 128);
 
     APP_LOG(
         APP_LOG_LEVEL_INFO,

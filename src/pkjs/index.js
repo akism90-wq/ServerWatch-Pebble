@@ -116,5 +116,10 @@ function fetchServerStatus() {
 
 Pebble.addEventListener("ready", function () {
     console.log("ServerWatch PebbleKit JS ready");
+
     fetchServerStatus();
+
+    setInterval(function () {
+        fetchServerStatus();
+    }, 5000);
 });

@@ -126,6 +126,85 @@ static StatusIndicatorState prv_state_from_online(bool online)
         : STATUS_INDICATOR_CRITICAL;
 }
 
+void server_window_refresh(void)
+{
+    const ServerStatus *const status = server_status_service_get();
+
+    /*
+     * The Server window may not currently be loaded.
+     * In that case there is nothing to refresh; the latest status
+     * will be consumed normally the next time the window loads.
+     */
+    if (s_server_title_layer == NULL) {
+        return;
+    }
+
+    prv_format_metric_values(status);
+
+    snprintf(
+        s_updated_text,
+        sizeof(s_updated_text),
+        "Updated\n%s",
+        status->updated_text
+    );
+
+    text_layer_set_text(
+        s_server_title_layer,
+        status->server_name
+    );
+
+    // status_row_set_text(
+    //     s_server_status_row,
+    //     prv_server_summary_text(status)
+    // );
+
+    status_row_set_state(
+        s_server_status_row,
+        prv_server_summary_state(status)
+    );
+
+    metric_row_set_value(
+        s_metric_rows[SERVER_METRIC_CPU],
+        s_cpu_text
+    );
+
+    metric_row_set_value(
+        s_metric_rows[SERVER_METRIC_RAM],
+        s_ram_text
+    );
+
+    metric_row_set_value(
+        s_metric_rows[SERVER_METRIC_TEMPERATURE],
+        s_temperature_text
+    );
+
+    metric_row_set_value(
+        s_metric_rows[SERVER_METRIC_LOAD],
+        s_load_text
+    );
+
+    metric_row_set_value(
+        s_metric_rows[SERVER_METRIC_UPTIME],
+        status->uptime_text
+    );
+
+    for (int index = 0;
+         index < SERVER_SERVICE_COUNT;
+         ++index) {
+        status_row_set_state(
+            s_service_rows[index],
+            prv_state_from_online(
+                status->services[index].online
+            )
+        );
+    }
+
+    text_layer_set_text(
+        s_updated_layer,
+        s_updated_text
+    );
+}
+
 static void prv_window_load(Window *window)
 {
     Layer *const window_layer = window_get_root_layer(window);

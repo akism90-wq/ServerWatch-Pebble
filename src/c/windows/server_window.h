@@ -4,3 +4,4 @@
 
 Window *server_window_create(void);
 void server_window_destroy(Window *window);
+void server_window_refresh(void);
