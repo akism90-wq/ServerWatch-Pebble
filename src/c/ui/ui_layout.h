@@ -14,6 +14,7 @@
 #define UI_METRIC_ROW_HEIGHT         24
 #define UI_METRIC_LABEL_WIDTH        70
 #define UI_METRIC_VALUE_X            72
+#define UI_METRIC_VALUE_RIGHT_INSET  4
 
 /* Section headings */
 
@@ -22,3 +23,5 @@
 /* Footer */
 
 #define UI_TIMESTAMP_HEIGHT          40
+
+

@@ -5,6 +5,7 @@
 #include "../services/server_status_service.h"
 #include "../ui/metric_row.h"
 #include "../ui/status_row.h"
+#include "../ui/updated_age_view.h"
 
 #define SERVER_METRIC_COUNT 5
 #define SERVER_CONTENT_HEIGHT 440
@@ -21,116 +22,17 @@ typedef enum
 static ScrollLayer *s_scroll_layer;
 static TextLayer *s_server_title_layer;
 static TextLayer *s_services_title_layer;
-static TextLayer *s_updated_layer;
-static AppTimer *s_update_age_timer;
 
-static void prv_update_age_timer_callback(void *context);
+static UpdatedAgeView *s_updated_age_view;
 
 static StatusRow *s_server_status_row;
 static StatusRow *s_service_rows[SERVER_SERVICE_COUNT];
 static MetricRow *s_metric_rows[SERVER_METRIC_COUNT];
 
-
 static char s_cpu_text[16];
 static char s_ram_text[16];
 static char s_temperature_text[16];
 static char s_load_text[16];
-static char s_updated_text[48];
-
-static void prv_refresh_updated_text(void)
-{
-    const ServerStatus *const status =
-        server_status_service_get();
-
-    if (status->last_update_time == 0)
-    {
-        snprintf(
-            s_updated_text,
-            sizeof(s_updated_text),
-            "Updated\nNever");
-    }
-    else
-    {
-        const uint32_t age_seconds =
-            server_status_service_get_update_age_seconds();
-
-        if (age_seconds < 10U)
-        {
-            snprintf(
-                s_updated_text,
-                sizeof(s_updated_text),
-                "Updated\nJust now");
-        }
-        else if (age_seconds < 25U)
-        {
-            snprintf(
-                s_updated_text,
-                sizeof(s_updated_text),
-                "Updated\n10 sec ago");
-        }
-        else if (age_seconds < 60U)
-        {
-            snprintf(
-                s_updated_text,
-                sizeof(s_updated_text),
-                "Updated\n25 sec ago");
-        }
-        else if (age_seconds < 3600U)
-        {
-            const uint32_t minutes = age_seconds / 60U;
-
-            snprintf(
-                s_updated_text,
-                sizeof(s_updated_text),
-                "Updated\n%lu min ago",
-                (unsigned long)minutes);
-        }
-        else if (age_seconds < 86400U)
-        {
-            const uint32_t hours =
-                age_seconds / 3600U;
-
-            snprintf(
-                s_updated_text,
-                sizeof(s_updated_text),
-                "Updated\n%lu hr ago",
-                (unsigned long)hours);
-        }
-        else
-        {
-            const uint32_t days =
-                age_seconds / 86400U;
-
-            snprintf(
-                s_updated_text,
-                sizeof(s_updated_text),
-                "Updated\n%lu day%s ago",
-                (unsigned long)days,
-                (days == 1U) ? "" : "s");
-        }
-    }
-
-    if (s_updated_layer != NULL)
-    {
-        text_layer_set_text(
-            s_updated_layer,
-            s_updated_text);
-    }
-}
-
-static void prv_update_age_timer_callback(void *context)
-{
-    (void)context;
-
-    prv_refresh_updated_text();
-
-    s_update_age_timer =
-        app_timer_register(
-            1000,
-            prv_update_age_timer_callback,
-            NULL
-        );
-}
 
 static void prv_format_metric_values(const ServerStatus *status)
 {
@@ -240,7 +142,8 @@ void server_window_refresh(void)
 
     prv_format_metric_values(status);
 
-    prv_refresh_updated_text();
+    updated_age_view_refresh(
+    s_updated_age_view);
 
     text_layer_set_text(
         s_server_title_layer,
@@ -293,9 +196,8 @@ void server_window_refresh(void)
         );
     }
 
-    text_layer_set_text(
-        s_updated_layer,
-        s_updated_text
+    updated_age_view_refresh(
+        s_updated_age_view
     );
 }
 
@@ -306,8 +208,6 @@ static void prv_window_load(Window *window)
     const ServerStatus *const status = server_status_service_get();
 
     prv_format_metric_values(status);
-
-    prv_refresh_updated_text();
 
     s_scroll_layer = scroll_layer_create(bounds);
 
@@ -415,23 +315,8 @@ static void prv_window_load(Window *window)
         );
     }
 
-    s_updated_layer = text_layer_create(
+    s_updated_age_view = updated_age_view_create(
         GRect(12, 392, bounds.size.w - 24, 40)
-    );
-
-    text_layer_set_text(
-        s_updated_layer,
-        s_updated_text
-    );
-
-    text_layer_set_font(
-        s_updated_layer,
-        fonts_get_system_font(FONT_KEY_GOTHIC_14)
-    );
-
-    text_layer_set_text_alignment(
-        s_updated_layer,
-        GTextAlignmentLeft
     );
 
     scroll_layer_add_child(
@@ -473,35 +358,29 @@ static void prv_window_load(Window *window)
         }
     }
 
-    scroll_layer_add_child(
-        s_scroll_layer,
-        text_layer_get_layer(s_updated_layer)
-    );
+    if (s_updated_age_view != NULL)
+    {
+        scroll_layer_add_child(
+            s_scroll_layer,
+            updated_age_view_get_layer(
+                s_updated_age_view)
+        );
+    }
 
     layer_add_child(
         window_layer,
         scroll_layer_get_layer(s_scroll_layer)
     );
 
-    s_update_age_timer =
-    app_timer_register(
-        1000,
-        prv_update_age_timer_callback,
-        NULL
-    );
 }
 
 static void prv_window_unload(Window *window)
 {
-    if (s_update_age_timer != NULL)
-    {
-        app_timer_cancel(s_update_age_timer);
-        s_update_age_timer = NULL;
-    }
+    updated_age_view_destroy(
+    s_updated_age_view);
+    s_updated_age_view = NULL;
 
-    text_layer_destroy(s_updated_layer);
-    s_updated_layer = NULL;
-
+    
     for (int index = 0;
          index < SERVER_SERVICE_COUNT;
          ++index) {

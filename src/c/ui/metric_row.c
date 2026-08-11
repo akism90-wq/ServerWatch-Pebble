@@ -43,7 +43,9 @@ MetricRow *metric_row_create(
         GRect(
             UI_METRIC_VALUE_X,
             0,
-            frame.size.w - UI_METRIC_VALUE_X,
+            frame.size.w
+                - UI_METRIC_VALUE_X
+                - UI_METRIC_VALUE_RIGHT_INSET,
             frame.size.h
         )
     );

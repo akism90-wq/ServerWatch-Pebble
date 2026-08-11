@@ -220,3 +220,127 @@ uint32_t server_status_service_get_update_age_seconds(void)
 
     return (uint32_t)(now - status->last_update_time);
 }
+
+void server_status_service_format_update_age(
+    char *buffer,
+    size_t buffer_size)
+{
+    const ServerStatus *const status =
+        server_status_service_get();
+
+    if (buffer == NULL || buffer_size == 0U)
+    {
+        return;
+    }
+
+    if (status->last_update_time == 0)
+    {
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\nNever");
+        return;
+    }
+
+    const uint32_t age_seconds =
+        server_status_service_get_update_age_seconds();
+
+    if (age_seconds < 10U)
+    {
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\nJust now");
+    }
+    else if (age_seconds < 25U)
+    {
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\n10 sec ago");
+    }
+    else if (age_seconds < 60U)
+    {
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\n25 sec ago");
+    }
+    else if (age_seconds < 3600U)
+    {
+        const uint32_t minutes =
+            age_seconds / 60U;
+
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\n%lu min ago",
+            (unsigned long)minutes);
+    }
+    else if (age_seconds < 86400U)
+    {
+        const uint32_t hours =
+            age_seconds / 3600U;
+
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\n%lu hr ago",
+            (unsigned long)hours);
+    }
+    else
+    {
+        const uint32_t days =
+            age_seconds / 86400U;
+
+        snprintf(
+            buffer,
+            buffer_size,
+            "Updated\n%lu day%s ago",
+            (unsigned long)days,
+            (days == 1U) ? "" : "s");
+    }
+}
+
+void server_status_service_set_storage(
+    int storage_used_percent,
+    bool storage_warning,
+    int32_t storage_used_tenths_gb,
+    int32_t storage_free_tenths_gb,
+    int32_t storage_total_tenths_gb,
+    int32_t movies_tenths_gb,
+    int32_t tv_tenths_gb,
+    int32_t immich_tenths_gb,
+    int32_t downloads_tenths_gb,
+    int32_t other_tenths_gb)
+{
+    s_status.storage_used_percent =
+        storage_used_percent;
+
+    s_status.storage_warning =
+        storage_warning;
+
+    s_status.storage_used_tb =
+        (float)storage_used_tenths_gb / 10000.0f;
+
+    s_status.storage_free_tb =
+        (float)storage_free_tenths_gb / 10000.0f;
+
+    s_status.storage_total_tb =
+        (float)storage_total_tenths_gb / 10000.0f;
+
+    s_status.movies_gb =
+        (float)movies_tenths_gb / 10.0f;
+
+    s_status.tv_gb =
+        (float)tv_tenths_gb / 10.0f;
+
+    s_status.immich_gb =
+        (float)immich_tenths_gb / 10.0f;
+
+    s_status.downloads_gb =
+        (float)downloads_tenths_gb / 10.0f;
+
+    s_status.other_gb =
+        (float)other_tenths_gb / 10.0f;
+}

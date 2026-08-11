@@ -71,6 +71,7 @@ typedef struct
     time_t last_update_time;
 
     int storage_used_percent;
+    bool storage_warning;
 
     float storage_used_tb;
     float storage_free_tb;

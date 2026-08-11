@@ -35,7 +35,17 @@
       "sonarrOnline",
       "radarrOnline",
       "prowlarrOnline",
-      "immichOnline"
+      "immichOnline",
+      "storageUsedPercent",
+      "storageWarning",
+      "storageUsedTenthsGb",
+      "storageFreeTenthsGb",
+      "storageTotalTenthsGb",
+      "moviesTenthsGb",
+      "tvTenthsGb",
+      "immichTenthsGb",
+      "downloadsTenthsGb",
+      "otherTenthsGb"
     ],
     "resources": {
       "media": []

@@ -2,6 +2,7 @@
 #include "services/server_status_service.h"
 #include "windows/home_window.h"
 #include "windows/server_window.h"
+#include "windows/storage_window.h"
 
 static Window *s_home_window;
 
@@ -113,9 +114,68 @@ static void prv_inbox_received_handler(
             APP_LOG_LEVEL_INFO,
             "Received live service states");
     }
+
+    Tuple *storage_used_percent_tuple =
+    dict_find(iterator, MESSAGE_KEY_storageUsedPercent);
+
+    Tuple *storage_warning_tuple =
+        dict_find(iterator, MESSAGE_KEY_storageWarning);
+
+    Tuple *storage_used_tuple =
+        dict_find(iterator, MESSAGE_KEY_storageUsedTenthsGb);
+
+    Tuple *storage_free_tuple =
+        dict_find(iterator, MESSAGE_KEY_storageFreeTenthsGb);
+
+    Tuple *storage_total_tuple =
+        dict_find(iterator, MESSAGE_KEY_storageTotalTenthsGb);
+
+    Tuple *movies_tuple =
+        dict_find(iterator, MESSAGE_KEY_moviesTenthsGb);
+
+    Tuple *tv_tuple =
+        dict_find(iterator, MESSAGE_KEY_tvTenthsGb);
+
+    Tuple *immich_storage_tuple =
+        dict_find(iterator, MESSAGE_KEY_immichTenthsGb);
+
+    Tuple *downloads_storage_tuple =
+        dict_find(iterator, MESSAGE_KEY_downloadsTenthsGb);
+
+    Tuple *other_tuple =
+        dict_find(iterator, MESSAGE_KEY_otherTenthsGb);
+
+    if ((storage_used_percent_tuple != NULL) &&
+    (storage_warning_tuple != NULL) &&
+    (storage_used_tuple != NULL) &&
+    (storage_free_tuple != NULL) &&
+    (storage_total_tuple != NULL) &&
+    (movies_tuple != NULL) &&
+    (tv_tuple != NULL) &&
+    (immich_storage_tuple != NULL) &&
+    (downloads_storage_tuple != NULL) &&
+    (other_tuple != NULL))
+    {
+        server_status_service_set_storage(
+            storage_used_percent_tuple->value->int32,
+            storage_warning_tuple->value->int32 != 0,
+            storage_used_tuple->value->int32,
+            storage_free_tuple->value->int32,
+            storage_total_tuple->value->int32,
+            movies_tuple->value->int32,
+            tv_tuple->value->int32,
+            immich_storage_tuple->value->int32,
+            downloads_storage_tuple->value->int32,
+            other_tuple->value->int32);
+
+            APP_LOG(
+            APP_LOG_LEVEL_INFO,
+            "Received live storage status");
+    }    
     
     server_status_service_mark_updated();
     server_window_refresh();
+    storage_window_refresh();
 }
 
 static void prv_init(void)

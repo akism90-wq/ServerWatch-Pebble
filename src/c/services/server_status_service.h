@@ -28,3 +28,21 @@ void server_status_service_set_service_states(
 void server_status_service_mark_updated(void);
 
 uint32_t server_status_service_get_update_age_seconds(void);
+
+void server_status_service_format_update_age(
+    char *buffer,
+    size_t buffer_size
+);
+
+void server_status_service_set_storage(
+    int storage_used_percent,
+    bool storage_warning,
+    int32_t storage_used_tenths_gb,
+    int32_t storage_free_tenths_gb,
+    int32_t storage_total_tenths_gb,
+    int32_t movies_tenths_gb,
+    int32_t tv_tenths_gb,
+    int32_t immich_tenths_gb,
+    int32_t downloads_tenths_gb,
+    int32_t other_tenths_gb
+);
