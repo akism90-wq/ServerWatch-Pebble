@@ -13,7 +13,8 @@ void server_status_service_set_system_metrics(
     int32_t ram_tenths,
     int32_t temperature_tenths,
     int32_t load_hundredths,
-    uint32_t uptime_seconds);
+    uint32_t uptime_seconds
+);
 
 void server_status_service_set_service_states(
     bool jellyfin_online,
@@ -21,4 +22,9 @@ void server_status_service_set_service_states(
     bool sonarr_online,
     bool radarr_online,
     bool prowlarr_online,
-    bool immich_online);
+    bool immich_online
+);
+
+void server_status_service_mark_updated(void);
+
+uint32_t server_status_service_get_update_age_seconds(void);

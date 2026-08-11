@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
+#include <pebble.h>
 #include "server_status_service.h"
 
 /*
@@ -187,4 +189,34 @@ void server_status_service_set_service_states(
     s_status.services[3].online = radarr_online;
     s_status.services[4].online = prowlarr_online;
     s_status.services[5].online = immich_online;
+}
+
+void server_status_service_mark_updated(void)
+{
+    time_t now = 0U;
+
+    (void)time_ms(&now, NULL);
+
+    s_status.last_update_time = now;
+}
+
+uint32_t server_status_service_get_update_age_seconds(void)
+{
+    const ServerStatus *const status = server_status_service_get();
+
+    if (status->last_update_time == 0)
+    {
+        return 0U;
+    }
+
+    time_t now = 0;
+
+    (void)time_ms(&now, NULL);
+
+    if (now <= status->last_update_time)
+    {
+        return 0U;
+    }
+
+    return (uint32_t)(now - status->last_update_time);
 }

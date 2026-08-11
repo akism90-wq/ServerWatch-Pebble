@@ -22,16 +22,115 @@ static ScrollLayer *s_scroll_layer;
 static TextLayer *s_server_title_layer;
 static TextLayer *s_services_title_layer;
 static TextLayer *s_updated_layer;
+static AppTimer *s_update_age_timer;
+
+static void prv_update_age_timer_callback(void *context);
 
 static StatusRow *s_server_status_row;
 static StatusRow *s_service_rows[SERVER_SERVICE_COUNT];
 static MetricRow *s_metric_rows[SERVER_METRIC_COUNT];
+
 
 static char s_cpu_text[16];
 static char s_ram_text[16];
 static char s_temperature_text[16];
 static char s_load_text[16];
 static char s_updated_text[48];
+
+static void prv_refresh_updated_text(void)
+{
+    const ServerStatus *const status =
+        server_status_service_get();
+
+    if (status->last_update_time == 0)
+    {
+        snprintf(
+            s_updated_text,
+            sizeof(s_updated_text),
+            "Updated\nNever");
+    }
+    else
+    {
+        const uint32_t age_seconds =
+            server_status_service_get_update_age_seconds();
+
+        if (age_seconds < 10U)
+        {
+            snprintf(
+                s_updated_text,
+                sizeof(s_updated_text),
+                "Updated\nJust now");
+        }
+        else if (age_seconds < 25U)
+        {
+            snprintf(
+                s_updated_text,
+                sizeof(s_updated_text),
+                "Updated\n10 sec ago");
+        }
+        else if (age_seconds < 60U)
+        {
+            snprintf(
+                s_updated_text,
+                sizeof(s_updated_text),
+                "Updated\n25 sec ago");
+        }
+        else if (age_seconds < 3600U)
+        {
+            const uint32_t minutes = age_seconds / 60U;
+
+            snprintf(
+                s_updated_text,
+                sizeof(s_updated_text),
+                "Updated\n%lu min ago",
+                (unsigned long)minutes);
+        }
+        else if (age_seconds < 86400U)
+        {
+            const uint32_t hours =
+                age_seconds / 3600U;
+
+            snprintf(
+                s_updated_text,
+                sizeof(s_updated_text),
+                "Updated\n%lu hr ago",
+                (unsigned long)hours);
+        }
+        else
+        {
+            const uint32_t days =
+                age_seconds / 86400U;
+
+            snprintf(
+                s_updated_text,
+                sizeof(s_updated_text),
+                "Updated\n%lu day%s ago",
+                (unsigned long)days,
+                (days == 1U) ? "" : "s");
+        }
+    }
+
+    if (s_updated_layer != NULL)
+    {
+        text_layer_set_text(
+            s_updated_layer,
+            s_updated_text);
+    }
+}
+
+static void prv_update_age_timer_callback(void *context)
+{
+    (void)context;
+
+    prv_refresh_updated_text();
+
+    s_update_age_timer =
+        app_timer_register(
+            1000,
+            prv_update_age_timer_callback,
+            NULL
+        );
+}
 
 static void prv_format_metric_values(const ServerStatus *status)
 {
@@ -141,12 +240,7 @@ void server_window_refresh(void)
 
     prv_format_metric_values(status);
 
-    snprintf(
-        s_updated_text,
-        sizeof(s_updated_text),
-        "Updated\n%s",
-        status->updated_text
-    );
+    prv_refresh_updated_text();
 
     text_layer_set_text(
         s_server_title_layer,
@@ -213,12 +307,7 @@ static void prv_window_load(Window *window)
 
     prv_format_metric_values(status);
 
-    snprintf(
-        s_updated_text,
-        sizeof(s_updated_text),
-        "Updated\n%s",
-        status->updated_text
-    );
+    prv_refresh_updated_text();
 
     s_scroll_layer = scroll_layer_create(bounds);
 
@@ -393,10 +482,23 @@ static void prv_window_load(Window *window)
         window_layer,
         scroll_layer_get_layer(s_scroll_layer)
     );
+
+    s_update_age_timer =
+    app_timer_register(
+        1000,
+        prv_update_age_timer_callback,
+        NULL
+    );
 }
 
 static void prv_window_unload(Window *window)
 {
+    if (s_update_age_timer != NULL)
+    {
+        app_timer_cancel(s_update_age_timer);
+        s_update_age_timer = NULL;
+    }
+
     text_layer_destroy(s_updated_layer);
     s_updated_layer = NULL;
 

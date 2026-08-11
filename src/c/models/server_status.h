@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <time.h>
 
 #define SERVER_SERVICE_COUNT 6
 #define SERVER_DOWNLOAD_COUNT 3
@@ -67,6 +68,7 @@ typedef struct
 
     char uptime_text[UPTIME_TEXT_LENGTH];
     char updated_text[UPDATED_TEXT_LENGTH];
+    time_t last_update_time;
 
     int storage_used_percent;
 
@@ -88,4 +90,6 @@ typedef struct
     DownloadStatus downloads[SERVER_DOWNLOAD_COUNT];
 
     ServiceStatus services[SERVER_SERVICE_COUNT];
+
+    
 } ServerStatus;

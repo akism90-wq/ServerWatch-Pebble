@@ -113,7 +113,8 @@ static void prv_inbox_received_handler(
             APP_LOG_LEVEL_INFO,
             "Received live service states");
     }
-
+    
+    server_status_service_mark_updated();
     server_window_refresh();
 }
 
