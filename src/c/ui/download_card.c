@@ -6,6 +6,7 @@
 struct DownloadCard
 {
     Layer *root_layer;
+    Layer *content_layer;
     Layer *progress_bar_layer;
     Layer *warning_layer;
 
@@ -16,6 +17,8 @@ struct DownloadCard
     TextLayer *speed_layer;
     TextLayer *eta_layer;
     TextLayer *size_layer;
+
+    bool selected;
 
     int progress_percent;
 
@@ -113,6 +116,61 @@ static void prv_warning_update(
     gpath_destroy(path);
 }
 
+static void prv_card_update(
+    Layer *layer,
+    GContext *context
+)
+{
+    DownloadCard *const *card_ref =
+        layer_get_data(layer);
+
+    if ((card_ref == NULL) ||
+        (*card_ref == NULL))
+    {
+        return;
+    }
+
+    DownloadCard *const card =
+        *card_ref;
+
+    const GRect bounds =
+        layer_get_bounds(layer);
+
+    const GRect card_bounds =
+        grect_inset(
+            bounds,
+            GEdgeInsets(1)
+        );
+
+    graphics_context_set_fill_color(
+        context,
+        GColorWhite
+    );
+
+    graphics_fill_rect(
+        context,
+        card_bounds,
+        6,
+        GCornersAll
+    );
+
+    graphics_context_set_stroke_color(
+        context,
+        GColorBlack
+    );
+
+    graphics_context_set_stroke_width(
+        context,
+        card->selected ? 2 : 1
+    );
+
+    graphics_draw_round_rect(
+        context,
+        card_bounds,
+        6
+    );
+}
+
 DownloadCard *download_card_create(
     GRect frame,
     const char *name,
@@ -134,7 +192,10 @@ DownloadCard *download_card_create(
     }
 
     card->root_layer =
-        layer_create(frame);
+        layer_create_with_data(
+            frame,
+            sizeof(DownloadCard *)
+        );
 
     if (card->root_layer == NULL)
     {
@@ -142,11 +203,47 @@ DownloadCard *download_card_create(
         return NULL;
     }
 
+    DownloadCard **const root_card_ref =
+        layer_get_data(
+            card->root_layer
+        );
+
+    *root_card_ref = card;
+
+    layer_set_update_proc(
+        card->root_layer,
+        prv_card_update
+    );
+
+    /*
+     * The root layer owns the visual card boundary.
+     * All actual card contents live inside this inset
+     * layer so they cannot collide with the border.
+     */
+    const int16_t content_width =
+        frame.size.w - 12;
+
+    card->content_layer =
+        layer_create(
+            GRect(
+                6,
+                4,
+                content_width,
+                frame.size.h - 8
+            )
+        );
+
+    if (card->content_layer == NULL)
+    {
+        download_card_destroy(card);
+        return NULL;
+    }
+
     const int16_t progress_text_width = 38;
     const int16_t progress_gap = 6;
 
     const int16_t progress_bar_width =
-        frame.size.w -
+        content_width -
         progress_text_width -
         progress_gap;
 
@@ -163,12 +260,12 @@ DownloadCard *download_card_create(
 
     if (card->progress_bar_layer != NULL)
     {
-        DownloadCard **const card_ref =
+        DownloadCard **const progress_card_ref =
             layer_get_data(
                 card->progress_bar_layer
             );
 
-        *card_ref = card;
+        *progress_card_ref = card;
 
         layer_set_update_proc(
             card->progress_bar_layer,
@@ -178,7 +275,12 @@ DownloadCard *download_card_create(
 
     card->warning_layer =
         layer_create(
-            GRect(0, 139, 9, 9)
+            GRect(
+                0,
+                139,
+                9,
+                9
+            )
         );
 
     if (card->warning_layer != NULL)
@@ -191,17 +293,32 @@ DownloadCard *download_card_create(
 
     card->name_layer =
         text_layer_create(
-            GRect(0, 0, frame.size.w, 24)
+            GRect(
+                0,
+                0,
+                content_width,
+                24
+            )
         );
 
     card->subtitle_layer =
         text_layer_create(
-            GRect(0, 22, frame.size.w, 20)
+            GRect(
+                0,
+                22,
+                content_width,
+                20
+            )
         );
 
     card->state_layer =
         text_layer_create(
-            GRect(0, 42, frame.size.w, 20)
+            GRect(
+                0,
+                42,
+                content_width,
+                20
+            )
         );
 
     card->progress_layer =
@@ -216,17 +333,32 @@ DownloadCard *download_card_create(
 
     card->speed_layer =
         text_layer_create(
-            GRect(0, 82, frame.size.w, 24)
+            GRect(
+                0,
+                82,
+                content_width,
+                24
+            )
         );
 
     card->eta_layer =
         text_layer_create(
-            GRect(0, 106, frame.size.w, 24)
+            GRect(
+                0,
+                106,
+                content_width,
+                24
+            )
         );
 
     card->size_layer =
         text_layer_create(
-            GRect(0, 130, frame.size.w, 24)
+            GRect(
+                0,
+                130,
+                content_width,
+                24
+            )
         );
 
     if ((card->name_layer == NULL) ||
@@ -236,7 +368,8 @@ DownloadCard *download_card_create(
         (card->speed_layer == NULL) ||
         (card->eta_layer == NULL) ||
         (card->size_layer == NULL) ||
-        (card->warning_layer == NULL))
+        (card->warning_layer == NULL) ||
+        (card->progress_bar_layer == NULL))
     {
         download_card_destroy(card);
         return NULL;
@@ -297,8 +430,8 @@ DownloadCard *download_card_create(
     );
 
     text_layer_set_text_alignment(
-    card->subtitle_layer,
-    GTextAlignmentLeft
+        card->subtitle_layer,
+        GTextAlignmentLeft
     );
 
     text_layer_set_text_alignment(
@@ -327,66 +460,73 @@ DownloadCard *download_card_create(
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         text_layer_get_layer(
             card->name_layer
         )
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         text_layer_get_layer(
             card->subtitle_layer
         )
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         text_layer_get_layer(
             card->state_layer
         )
-    );    
-
-    if (card->progress_bar_layer != NULL)
-    {
-        layer_add_child(
-            card->root_layer,
-            card->progress_bar_layer
-        );
-    }
+    );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
+        card->progress_bar_layer
+    );
+
+    layer_add_child(
+        card->content_layer,
         text_layer_get_layer(
             card->progress_layer
         )
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         text_layer_get_layer(
             card->speed_layer
         )
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         text_layer_get_layer(
             card->eta_layer
         )
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         card->warning_layer
     );
 
     layer_add_child(
-        card->root_layer,
+        card->content_layer,
         text_layer_get_layer(
             card->size_layer
         )
     );
+
+    /*
+     * Attach the complete content tree to the card.
+     */
+    layer_add_child(
+        card->root_layer,
+        card->content_layer
+    );
+
+    card->selected = false;
 
     download_card_update(
         card,
@@ -410,6 +550,28 @@ Layer *download_card_get_layer(
     return card == NULL
         ? NULL
         : card->root_layer;
+}
+
+void download_card_set_selected(
+    DownloadCard *card,
+    bool selected
+)
+{
+    if (card == NULL)
+    {
+        return;
+    }
+
+    if (card->selected == selected)
+    {
+        return;
+    }
+
+    card->selected = selected;
+
+    layer_mark_dirty(
+        card->root_layer
+    );
 }
 
 void download_card_set_progress(
@@ -583,6 +745,13 @@ void download_card_destroy(
     if (card->name_layer != NULL) {
         text_layer_destroy(
             card->name_layer
+        );
+    }
+
+    if (card->content_layer != NULL)
+    {
+        layer_destroy(
+            card->content_layer
         );
     }
 

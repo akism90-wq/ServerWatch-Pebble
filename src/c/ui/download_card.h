@@ -23,6 +23,11 @@ void download_card_set_progress(
     int progress_percent
 );
 
+void download_card_set_selected(
+    DownloadCard *card,
+    bool selected
+);
+
 void download_card_update(
     DownloadCard *card,
     const char *name,
@@ -36,3 +41,4 @@ void download_card_update(
 );
 
 void download_card_destroy(DownloadCard *card);
+
