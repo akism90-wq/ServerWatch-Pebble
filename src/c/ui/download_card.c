@@ -10,6 +10,8 @@ struct DownloadCard
     Layer *warning_layer;
 
     TextLayer *name_layer;
+    TextLayer *subtitle_layer;
+    TextLayer *state_layer;
     TextLayer *progress_layer;
     TextLayer *speed_layer;
     TextLayer *eta_layer;
@@ -114,6 +116,8 @@ static void prv_warning_update(
 DownloadCard *download_card_create(
     GRect frame,
     const char *name,
+    const char *subtitle,
+    const char *state,
     int progress_percent,
     const char *speed_text,
     const char *eta_text,
@@ -124,14 +128,16 @@ DownloadCard *download_card_create(
     DownloadCard *const card =
         calloc(1, sizeof(DownloadCard));
 
-    if (card == NULL) {
+    if (card == NULL)
+    {
         return NULL;
     }
 
     card->root_layer =
         layer_create(frame);
 
-    if (card->root_layer == NULL) {
+    if (card->root_layer == NULL)
+    {
         free(card);
         return NULL;
     }
@@ -148,14 +154,15 @@ DownloadCard *download_card_create(
         layer_create_with_data(
             GRect(
                 0,
-                35,
+                67,
                 progress_bar_width,
                 10
             ),
             sizeof(DownloadCard *)
         );
 
-    if (card->progress_bar_layer != NULL) {
+    if (card->progress_bar_layer != NULL)
+    {
         DownloadCard **const card_ref =
             layer_get_data(
                 card->progress_bar_layer
@@ -171,18 +178,14 @@ DownloadCard *download_card_create(
 
     card->warning_layer =
         layer_create(
-            GRect(0, 107, 9, 9)
+            GRect(0, 139, 9, 9)
         );
 
-    if (card->warning_layer != NULL) {
+    if (card->warning_layer != NULL)
+    {
         layer_set_update_proc(
             card->warning_layer,
             prv_warning_update
-        );
-
-        layer_set_hidden(
-            card->warning_layer,
-            !suspicious
         );
     }
 
@@ -191,11 +194,21 @@ DownloadCard *download_card_create(
             GRect(0, 0, frame.size.w, 24)
         );
 
+    card->subtitle_layer =
+        text_layer_create(
+            GRect(0, 22, frame.size.w, 20)
+        );
+
+    card->state_layer =
+        text_layer_create(
+            GRect(0, 42, frame.size.w, 20)
+        );
+
     card->progress_layer =
         text_layer_create(
             GRect(
                 progress_bar_width + progress_gap,
-                28,
+                60,
                 progress_text_width,
                 24
             )
@@ -203,103 +216,50 @@ DownloadCard *download_card_create(
 
     card->speed_layer =
         text_layer_create(
-            GRect(0, 52, frame.size.w, 24)
+            GRect(0, 82, frame.size.w, 24)
         );
 
     card->eta_layer =
         text_layer_create(
-            GRect(0, 76, frame.size.w, 24)
+            GRect(0, 106, frame.size.w, 24)
         );
-
-    const int16_t size_text_x =
-        suspicious ? 12 : 0;        
 
     card->size_layer =
         text_layer_create(
-            GRect(
-                size_text_x,
-                100,
-                frame.size.w - size_text_x,
-                24
-            )
+            GRect(0, 130, frame.size.w, 24)
         );
 
     if ((card->name_layer == NULL) ||
+        (card->subtitle_layer == NULL) ||
+        (card->state_layer == NULL) ||
         (card->progress_layer == NULL) ||
         (card->speed_layer == NULL) ||
         (card->eta_layer == NULL) ||
         (card->size_layer == NULL) ||
-        (card->warning_layer == NULL)) {
-
+        (card->warning_layer == NULL))
+    {
         download_card_destroy(card);
         return NULL;
     }
-
-    card->progress_percent =
-        progress_percent;
-
-    snprintf(
-        card->progress_text,
-        sizeof(card->progress_text),
-        "%d%%",
-        card->progress_percent
-    );
-
-    snprintf(
-        card->eta_display_text,
-        sizeof(card->eta_display_text),
-        "ETA: %s",
-        eta_text
-    );
-
-    if (size_mb >= 1000U) {
-        snprintf(
-            card->size_display_text,
-            sizeof(card->size_display_text),
-            "Size %lu.%lu GB",
-            (unsigned long)(size_mb / 1000U),
-            (unsigned long)(
-                (size_mb % 1000U) / 100U
-            )
-        );
-    } else {
-        snprintf(
-            card->size_display_text,
-            sizeof(card->size_display_text),
-            "Size %lu MB",
-            (unsigned long)size_mb
-        );
-    }
-
-    text_layer_set_text(
-        card->name_layer,
-        name
-    );
-
-    text_layer_set_text(
-        card->progress_layer,
-        card->progress_text
-    );
-
-    text_layer_set_text(
-        card->speed_layer,
-        speed_text
-    );
-
-    text_layer_set_text(
-        card->eta_layer,
-        card->eta_display_text
-    );
-
-    text_layer_set_text(
-        card->size_layer,
-        card->size_display_text
-    );
 
     text_layer_set_font(
         card->name_layer,
         fonts_get_system_font(
             FONT_KEY_GOTHIC_18_BOLD
+        )
+    );
+
+    text_layer_set_font(
+        card->subtitle_layer,
+        fonts_get_system_font(
+            FONT_KEY_GOTHIC_14
+        )
+    );
+
+    text_layer_set_font(
+        card->state_layer,
+        fonts_get_system_font(
+            FONT_KEY_GOTHIC_14
         )
     );
 
@@ -333,6 +293,16 @@ DownloadCard *download_card_create(
 
     text_layer_set_text_alignment(
         card->name_layer,
+        GTextAlignmentLeft
+    );
+
+    text_layer_set_text_alignment(
+    card->subtitle_layer,
+    GTextAlignmentLeft
+    );
+
+    text_layer_set_text_alignment(
+        card->state_layer,
         GTextAlignmentLeft
     );
 
@@ -363,7 +333,22 @@ DownloadCard *download_card_create(
         )
     );
 
-    if (card->progress_bar_layer != NULL) {
+    layer_add_child(
+        card->root_layer,
+        text_layer_get_layer(
+            card->subtitle_layer
+        )
+    );
+
+    layer_add_child(
+        card->root_layer,
+        text_layer_get_layer(
+            card->state_layer
+        )
+    );    
+
+    if (card->progress_bar_layer != NULL)
+    {
         layer_add_child(
             card->root_layer,
             card->progress_bar_layer
@@ -401,6 +386,18 @@ DownloadCard *download_card_create(
         text_layer_get_layer(
             card->size_layer
         )
+    );
+
+    download_card_update(
+        card,
+        name,
+        subtitle,
+        state,
+        progress_percent,
+        speed_text,
+        eta_text,
+        size_mb,
+        suspicious
     );
 
     return card;
@@ -446,6 +443,85 @@ void download_card_set_progress(
     }
 }
 
+void download_card_update(
+    DownloadCard *card,
+    const char *name,
+    const char *subtitle,
+    const char *state,
+    int progress_percent,
+    const char *speed_text,
+    const char *eta_text,
+    uint32_t size_mb,
+    bool suspicious)
+{
+    if (card == NULL)
+    {
+        return;
+    }
+
+    text_layer_set_text(
+        card->name_layer,
+        name != NULL ? name : "");
+
+    download_card_set_progress(
+        card,
+        progress_percent);
+
+    text_layer_set_text(
+        card->speed_layer,
+        speed_text != NULL ? speed_text : "");
+
+    snprintf(
+        card->eta_display_text,
+        sizeof(card->eta_display_text),
+        "ETA: %s",
+        eta_text != NULL ? eta_text : "");
+
+    text_layer_set_text(
+        card->eta_layer,
+        card->eta_display_text);
+
+    if (size_mb >= 1000U)
+    {
+        snprintf(
+            card->size_display_text,
+            sizeof(card->size_display_text),
+            "Size %lu.%lu GB",
+            (unsigned long)(size_mb / 1000U),
+            (unsigned long)(
+                (size_mb % 1000U) / 100U));
+    }
+    else
+    {
+        snprintf(
+            card->size_display_text,
+            sizeof(card->size_display_text),
+            "Size %lu MB",
+            (unsigned long)size_mb);
+    }
+
+    text_layer_set_text(
+        card->size_layer,
+        card->size_display_text);
+
+    if (card->warning_layer != NULL)
+    {
+        layer_set_hidden(
+            card->warning_layer,
+            !suspicious);
+    }
+
+    text_layer_set_text(
+        card->subtitle_layer,
+        subtitle != NULL ? subtitle : ""
+    );
+
+    text_layer_set_text(
+        card->state_layer,
+        state != NULL ? state : ""
+    );
+}
+
 void download_card_destroy(
     DownloadCard *card
 )
@@ -487,6 +563,20 @@ void download_card_destroy(
     if (card->warning_layer != NULL) {
         layer_destroy(
             card->warning_layer
+        );
+    }
+
+    if (card->state_layer != NULL)
+    {
+        text_layer_destroy(
+            card->state_layer
+        );
+    }
+
+    if (card->subtitle_layer != NULL)
+    {
+        text_layer_destroy(
+            card->subtitle_layer
         );
     }
 

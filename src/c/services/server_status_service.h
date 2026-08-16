@@ -46,3 +46,18 @@ void server_status_service_set_storage(
     int32_t downloads_tenths_gb,
     int32_t other_tenths_gb
 );
+
+void server_status_service_set_download(
+    int index,
+    const char *name,
+    const char *subtitle,
+    const char *state,
+    int progress_percent,
+    const char *speed_text,
+    const char *eta_text,
+    uint32_t size_mb,
+    bool suspicious
+);
+
+void server_status_service_set_active_download_count(
+    int active_downloads);

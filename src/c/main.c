@@ -3,6 +3,7 @@
 #include "windows/home_window.h"
 #include "windows/server_window.h"
 #include "windows/storage_window.h"
+#include "windows/downloads_window.h"
 
 static Window *s_home_window;
 
@@ -171,11 +172,168 @@ static void prv_inbox_received_handler(
             APP_LOG(
             APP_LOG_LEVEL_INFO,
             "Received live storage status");
-    }    
+    }
     
+    Tuple *download_count_tuple =
+    dict_find(iterator, MESSAGE_KEY_downloadCount);
+
+    Tuple *download0_name_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0Name);
+
+    Tuple *download0_subtitle_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0Subtitle);
+
+    Tuple *download0_state_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0State);
+
+    Tuple *download0_progress_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0ProgressPercent);
+
+    Tuple *download0_speed_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0SpeedText);
+
+    Tuple *download0_eta_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0EtaText);
+
+    Tuple *download0_size_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0SizeMb);
+
+    Tuple *download0_suspicious_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0Suspicious);
+
+    Tuple *download1_name_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1Name);
+
+    Tuple *download1_subtitle_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1Subtitle);
+
+    Tuple *download1_state_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1State);
+
+    Tuple *download1_progress_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1ProgressPercent);
+
+    Tuple *download1_speed_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1SpeedText);
+
+    Tuple *download1_eta_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1EtaText);
+
+    Tuple *download1_size_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1SizeMb);
+
+    Tuple *download1_suspicious_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1Suspicious);
+
+    Tuple *download2_name_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2Name);
+
+    Tuple *download2_subtitle_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2Subtitle);
+
+    Tuple *download2_state_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2State);
+
+    Tuple *download2_progress_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2ProgressPercent);
+
+    Tuple *download2_speed_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2SpeedText);
+
+    Tuple *download2_eta_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2EtaText);
+
+    Tuple *download2_size_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2SizeMb);
+
+    Tuple *download2_suspicious_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2Suspicious);
+
+    if (download_count_tuple != NULL)
+    {
+        server_status_service_set_active_download_count(
+            download_count_tuple->value->int32);
+    }
+
+    if ((download0_name_tuple != NULL) &&
+        (download0_subtitle_tuple != NULL) &&
+        (download0_state_tuple != NULL) &&
+        (download0_progress_tuple != NULL) &&
+        (download0_speed_tuple != NULL) &&
+        (download0_eta_tuple != NULL) &&
+        (download0_size_tuple != NULL) &&
+        (download0_suspicious_tuple != NULL))
+    {
+        server_status_service_set_download(
+            0,
+            download0_name_tuple->value->cstring,
+            download0_subtitle_tuple->value->cstring,
+            download0_state_tuple->value->cstring,
+            download0_progress_tuple->value->int32,
+            download0_speed_tuple->value->cstring,
+            download0_eta_tuple->value->cstring,
+            (uint32_t)download0_size_tuple->value->int32,
+            download0_suspicious_tuple->value->int32 != 0);
+
+        APP_LOG(
+            APP_LOG_LEVEL_INFO,
+            "Received live download slot 0");
+    }
+    
+    if ((download1_name_tuple != NULL) &&
+        (download1_subtitle_tuple != NULL) &&
+        (download1_state_tuple != NULL) &&
+        (download1_progress_tuple != NULL) &&
+        (download1_speed_tuple != NULL) &&
+        (download1_eta_tuple != NULL) &&
+        (download1_size_tuple != NULL) &&
+        (download1_suspicious_tuple != NULL))
+    {
+        server_status_service_set_download(
+            1,
+            download1_name_tuple->value->cstring,
+            download1_subtitle_tuple->value->cstring,
+            download1_state_tuple->value->cstring,
+            download1_progress_tuple->value->int32,
+            download1_speed_tuple->value->cstring,
+            download1_eta_tuple->value->cstring,
+            (uint32_t)download1_size_tuple->value->int32,
+            download1_suspicious_tuple->value->int32 != 0);
+
+        APP_LOG(
+            APP_LOG_LEVEL_INFO,
+            "Received live download slot 1");
+    }
+
+    if ((download2_name_tuple != NULL) &&
+        (download2_subtitle_tuple != NULL) &&
+        (download2_state_tuple != NULL) &&
+        (download2_progress_tuple != NULL) &&
+        (download2_speed_tuple != NULL) &&
+        (download2_eta_tuple != NULL) &&
+        (download2_size_tuple != NULL) &&
+        (download2_suspicious_tuple != NULL))
+    {
+        server_status_service_set_download(
+            2,
+            download2_name_tuple->value->cstring,
+            download2_subtitle_tuple->value->cstring,
+            download2_state_tuple->value->cstring,
+            download2_progress_tuple->value->int32,
+            download2_speed_tuple->value->cstring,
+            download2_eta_tuple->value->cstring,
+            (uint32_t)download2_size_tuple->value->int32,
+            download2_suspicious_tuple->value->int32 != 0);
+
+        APP_LOG(
+            APP_LOG_LEVEL_INFO,
+            "Received live download slot 2");
+    }
+
     server_status_service_mark_updated();
     server_window_refresh();
     storage_window_refresh();
+    downloads_window_refresh();
 }
 
 static void prv_init(void)
@@ -183,7 +341,7 @@ static void prv_init(void)
     app_message_register_inbox_received(prv_inbox_received_handler);
 
     const AppMessageResult open_result =
-        app_message_open(512, 128);
+        app_message_open(1024, 128);
 
     APP_LOG(
         APP_LOG_LEVEL_INFO,

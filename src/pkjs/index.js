@@ -22,7 +22,110 @@ function getStorageCategoryUsedGb(categories, name) {
     return 0;
 }
 
+function formatDownloadSpeed(bytesPerSecond) {
+    if (bytesPerSecond >= 1000000) {
+        return (
+            (bytesPerSecond / 1000000).toFixed(1) +
+            " MB/s"
+        );
+    }
+
+    if (bytesPerSecond >= 1000) {
+        return (
+            (bytesPerSecond / 1000).toFixed(1) +
+            " KB/s"
+        );
+    }
+
+    return bytesPerSecond + " B/s";
+}
+
+function formatEta(seconds) {
+    if (seconds <= 0) {
+        return "--";
+    }
+
+    var days = Math.floor(seconds / 86400);
+    var hours = Math.floor(
+        (seconds % 86400) / 3600
+    );
+    var minutes = Math.floor(
+        (seconds % 3600) / 60
+    );
+
+    if (days > 0) {
+        return days + "d " + hours + "h";
+    }
+
+    if (hours > 0) {
+        return hours + "h " + minutes + "m";
+    }
+
+    return minutes + "m";
+}
+
+function getDownload(downloads, index) {
+    return index < downloads.length
+        ? downloads[index]
+        : null;
+}
+
+function getDownloadPriority(download) {
+    if (download === null) {
+        return 99;
+    }
+
+    if (download.state === "Downloading") {
+        return 0;
+    }
+
+    if (download.state === "Forced downloading") {
+        return 0;
+    }
+
+    if (download.state === "Stalled") {
+        return 1;
+    }
+
+    if (download.state === "Checking") {
+        return 1;
+    }
+
+    if (download.state === "Allocating") {
+        return 1;
+    }
+
+    if (download.state === "Queued") {
+        return 2;
+    }
+
+    return 3;
+}
+
+function getPrioritizedDownloads(downloads) {
+    var result = downloads.slice();
+
+    result.sort(function (a, b) {
+        return getDownloadPriority(a) -
+            getDownloadPriority(b);
+    });
+
+    return result;
+}
+
 function buildStatusMessage(status) {
+    var prioritizedDownloads =
+        getPrioritizedDownloads(status.downloads);
+
+    var download0 =
+        getDownload(prioritizedDownloads, 0);
+
+    var download1 =
+        getDownload(prioritizedDownloads, 1);
+
+    var download2 =
+        getDownload(prioritizedDownloads, 2);
+
     return {
         "serverName": status.server.name,
         "serverOnline": status.server.online ? 1 : 0,
@@ -121,7 +224,142 @@ function buildStatusMessage(status) {
                     status.storage.categories,
                     "Other"
                 ) * 10
-            )
+            ),
+
+        "downloadCount":
+            status.downloads.length,
+
+        "download0Name":
+            download0 ? download0.title : "",
+
+        "download1Name":
+            download1 ? download1.title : "",
+        
+        "download2Name":
+            download2 ? download2.title : "",        
+
+        "download0Subtitle":
+            download0
+                ? download0.subtitle
+                : "",
+
+       "download1Subtitle":
+            download1
+                ? download1.subtitle
+                : "",
+
+        "download2Subtitle":
+            download2
+                ? download2.subtitle
+                : "",
+
+        "download0State":
+            download0
+                ? download0.state
+                : "",
+
+        "download1State":
+            download1
+                ? download1.state
+                : "",
+
+        "download2State":
+            download2
+                ? download2.state
+                : "",
+
+        "download0ProgressPercent":
+            download0
+                ? download0.progressPercent
+                : 0,
+
+        "download1ProgressPercent":
+            download1
+                ? download1.progressPercent
+                : 0,
+
+        "download2ProgressPercent":
+            download2
+                ? download2.progressPercent
+                : 0,
+
+        "download0SpeedText":
+            download0
+                ? formatDownloadSpeed(
+                    download0.downloadSpeedBytesPerSecond
+                )
+                : "",
+
+        "download1SpeedText":
+            download1
+                ? formatDownloadSpeed(
+                    download1.downloadSpeedBytesPerSecond
+                )
+                : "",
+
+        "download2SpeedText":
+            download2
+                ? formatDownloadSpeed(
+                    download2.downloadSpeedBytesPerSecond
+                )
+                : "",
+
+        "download0EtaText":
+            download0
+                ? formatEta(
+                    download0.etaSeconds
+                )
+                : "",
+
+        "download1EtaText":
+            download1
+                ? formatEta(
+                    download1.etaSeconds
+                )
+                : "",
+
+        "download2EtaText":
+            download2
+                ? formatEta(
+                    download2.etaSeconds
+                )
+                : "",
+
+        "download0SizeMb":
+            download0
+                ? Math.round(
+                    download0.sizeGb * 1000
+                )
+                : 0,
+
+        "download1SizeMb":
+            download1
+                ? Math.round(
+                    download1.sizeGb * 1000
+                )
+                : 0,
+
+        "download2SizeMb":
+            download2
+                ? Math.round(
+                    download2.sizeGb * 1000
+                )
+                : 0,
+
+        "download0Suspicious":
+            download0 && download0.suspicious
+                ? 1
+                : 0,
+
+        "download1Suspicious":
+            download1 && download1.suspicious
+                ? 1
+                : 0,
+
+        "download2Suspicious":
+            download2 && download2.suspicious
+                ? 1
+                : 0
     };
 }
 

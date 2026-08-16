@@ -36,6 +36,7 @@
       "radarrOnline",
       "prowlarrOnline",
       "immichOnline",
+
       "storageUsedPercent",
       "storageWarning",
       "storageUsedTenthsGb",
@@ -45,7 +46,36 @@
       "tvTenthsGb",
       "immichTenthsGb",
       "downloadsTenthsGb",
-      "otherTenthsGb"
+      "otherTenthsGb",
+      
+      "downloadCount",
+
+      "download0Name",
+      "download0Subtitle",
+      "download0State",
+      "download0ProgressPercent",
+      "download0SpeedText",
+      "download0EtaText",
+      "download0SizeMb",
+      "download0Suspicious",
+
+      "download1Name",
+      "download1Subtitle",
+      "download1State",
+      "download1ProgressPercent",
+      "download1SpeedText",
+      "download1EtaText",
+      "download1SizeMb",
+      "download1Suspicious",
+
+      "download2Name",
+      "download2Subtitle",
+      "download2State",
+      "download2ProgressPercent",
+      "download2SpeedText",
+      "download2EtaText",
+      "download2SizeMb",
+      "download2Suspicious"
     ],
     "resources": {
       "media": []

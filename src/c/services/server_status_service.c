@@ -344,3 +344,80 @@ void server_status_service_set_storage(
     s_status.other_gb =
         (float)other_tenths_gb / 10.0f;
 }
+
+void server_status_service_set_active_download_count(
+    int active_downloads)
+{
+    s_status.active_downloads =
+        active_downloads < 0
+            ? 0
+            : active_downloads;
+}
+
+void server_status_service_set_download(
+    int index,
+    const char *name,
+    const char *subtitle,
+    const char *state,
+    int progress_percent,
+    const char *speed_text,
+    const char *eta_text,
+    uint32_t size_mb,
+    bool suspicious)
+{
+    if ((index < 0) ||
+        (index >= SERVER_DOWNLOAD_COUNT))
+    {
+        return;
+    }
+
+    DownloadStatus *const download =
+        &s_status.downloads[index];
+
+    snprintf(
+        download->name,
+        sizeof(download->name),
+        "%s",
+        name != NULL ? name : "");
+
+    snprintf(
+        download->subtitle,
+        sizeof(download->subtitle),
+        "%s",
+        subtitle != NULL ? subtitle : "");
+
+    snprintf(
+        download->state,
+        sizeof(download->state),
+        "%s",
+        state != NULL ? state : "");
+
+    if (progress_percent < 0)
+    {
+        download->progress_percent = 0;
+    }
+    else if (progress_percent > 100)
+    {
+        download->progress_percent = 100;
+    }
+    else
+    {
+        download->progress_percent = progress_percent;
+    }
+
+    snprintf(
+        download->speed_text,
+        sizeof(download->speed_text),
+        "%s",
+        speed_text != NULL ? speed_text : "");
+
+    snprintf(
+        download->eta_text,
+        sizeof(download->eta_text),
+        "%s",
+        eta_text != NULL ? eta_text : "");
+
+    download->size_mb = size_mb;
+    download->suspicious = suspicious;
+}
+

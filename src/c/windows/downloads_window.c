@@ -6,7 +6,7 @@
 #include "../ui/download_card.h"
 
 #define DOWNLOAD_CARD_COUNT SERVER_DOWNLOAD_COUNT
-#define DOWNLOADS_CONTENT_HEIGHT 360
+#define DOWNLOADS_CONTENT_HEIGHT 584
 
 static ScrollLayer *s_scroll_layer;
 static TextLayer *s_title_layer;
@@ -72,24 +72,26 @@ static void prv_window_load(Window *window)
             &status->downloads[index];
 
         s_download_cards[index] =
-            download_card_create(
-                GRect(
-                    12,
-                    44 + (index * 132),
-                    bounds.size.w - 24,
-                    124
-                ),
-                download->name,
-                download->progress_percent,
-                download->speed_text,
-                download->eta_text,
-                download->size_mb,
-                download->suspicious
-            );
+        download_card_create(
+            GRect(
+                12,
+                44 + (index * 164),
+                bounds.size.w - 24,
+                156
+            ),
+            download->name,
+            download->subtitle,
+            download->state,
+            download->progress_percent,
+            download->speed_text,
+            download->eta_text,
+            download->size_mb,
+            download->suspicious
+        );
     }
 
     s_updated_layer = text_layer_create(
-        GRect(12, 314, bounds.size.w - 24, 40)
+        GRect(12, 536, bounds.size.w - 24, 40)
     );
 
     text_layer_set_text(
@@ -173,6 +175,50 @@ Window *downloads_window_create(void)
     }
 
     return window;
+}
+
+void downloads_window_refresh(void)
+{
+    if (s_title_layer == NULL)
+    {
+        return;
+    }
+
+    const ServerStatus *const status =
+        server_status_service_get();
+
+    if (status == NULL)
+    {
+        return;
+    }
+
+    for (int index = 0;
+         index < SERVER_DOWNLOAD_COUNT;
+         ++index)
+    {
+        DownloadCard *const card =
+            s_download_cards[index];
+
+        if (card == NULL)
+        {
+            continue;
+        }
+
+        const DownloadStatus *const download =
+            &status->downloads[index];
+
+        download_card_update(
+            card,
+            download->name,
+            download->subtitle,
+            download->state,
+            download->progress_percent,
+            download->speed_text,
+            download->eta_text,
+            download->size_mb,
+            download->suspicious
+        );
+    }
 }
 
 void downloads_window_destroy(Window *window)
