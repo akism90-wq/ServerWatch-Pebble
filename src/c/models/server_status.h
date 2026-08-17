@@ -60,12 +60,22 @@ typedef struct
     bool online;
 } ServiceStatus;
 
+typedef enum
+{
+    CONNECTION_STATE_UNKNOWN = 0,
+    CONNECTION_STATE_CONNECTED,
+    CONNECTION_STATE_FAILED
+} ConnectionState;
+
 typedef struct
 {
     char server_name[SERVER_NAME_LENGTH];
 
     bool has_attention;
     bool server_online;
+
+    ConnectionState connection_state;
+    bool has_received_snapshot;
 
     float cpu_percent;
     float ram_percent;

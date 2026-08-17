@@ -129,6 +129,7 @@ function buildStatusMessage(status) {
     return {
         "serverName": status.server.name,
         "serverOnline": status.server.online ? 1 : 0,
+        "connectionState": 1,
 
         "cpuTenths":
             Math.round(status.systemMetrics.cpuUsagePercent * 10),
@@ -234,16 +235,16 @@ function buildStatusMessage(status) {
 
         "download1Name":
             download1 ? download1.title : "",
-        
+
         "download2Name":
-            download2 ? download2.title : "",        
+            download2 ? download2.title : "",
 
         "download0Subtitle":
             download0
                 ? download0.subtitle
                 : "",
 
-       "download1Subtitle":
+        "download1Subtitle":
             download1
                 ? download1.subtitle
                 : "",
@@ -378,17 +379,76 @@ function sendStatusToPebble(status) {
     );
 }
 
+function sendConnectionState(state) {
+    Pebble.sendAppMessage(
+        {
+            "connectionState": state
+        },
+        function () {
+            console.log(
+                "Connection state sent: " +
+                state
+            );
+        },
+        function (error) {
+            console.log(
+                "Connection state failed: " +
+                JSON.stringify(error)
+            );
+        }
+    );
+}
+
 function fetchServerStatus() {
     var request = new XMLHttpRequest();
+    var request_finished = false;
 
-    request.open("GET", config.agentUrl, true);
+    request.open(
+        "GET",
+        config.agentUrl,
+        true
+    );
 
     request.setRequestHeader(
         "X-ServerWatch-Api-Key",
         config.apiKey
     );
 
+    /*
+     * PebbleKit JS does not reliably honour XMLHttpRequest.timeout,
+     * so use an explicit watchdog to detect an unavailable Agent.
+     */
+    var watchdog = setTimeout(function () {
+        if (request_finished) {
+            return;
+        }
+
+        request_finished = true;
+
+        console.log(
+            "ServerWatch HTTP watchdog expired"
+        );
+
+        sendConnectionState(2);
+
+        try {
+            request.abort();
+        } catch (error) {
+            console.log(
+                "ServerWatch request abort failed: " +
+                error
+            );
+        }
+    }, 4000);
+
     request.onload = function () {
+        if (request_finished) {
+            return;
+        }
+
+        request_finished = true;
+        clearTimeout(watchdog);
+
         console.log(
             "ServerWatch HTTP response: " +
             request.status
@@ -399,11 +459,14 @@ function fetchServerStatus() {
                 "ServerWatch request failed: " +
                 request.responseText
             );
+
+            sendConnectionState(2);
             return;
         }
 
         try {
-            var status = JSON.parse(request.responseText);
+            var status =
+                JSON.parse(request.responseText);
 
             console.log(
                 "ServerWatch JSON parsed. Server: " +
@@ -416,11 +479,24 @@ function fetchServerStatus() {
                 "ServerWatch JSON parse failed: " +
                 error
             );
+
+            sendConnectionState(2);
         }
     };
 
     request.onerror = function () {
-        console.log("ServerWatch HTTP request failed");
+        if (request_finished) {
+            return;
+        }
+
+        request_finished = true;
+        clearTimeout(watchdog);
+
+        console.log(
+            "ServerWatch HTTP request failed"
+        );
+
+        sendConnectionState(2);
     };
 
     request.send();

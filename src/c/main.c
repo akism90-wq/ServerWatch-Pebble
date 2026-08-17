@@ -13,21 +13,56 @@ static void prv_inbox_received_handler(
 {
     (void)context;
 
-    Tuple *server_name_tuple =
-        dict_find(iterator, MESSAGE_KEY_serverName);
+    Tuple *connection_state_tuple =
+        dict_find(
+            iterator,
+            MESSAGE_KEY_connectionState
+        );
 
-    if (server_name_tuple != NULL)
+    if (connection_state_tuple != NULL)
     {
-        server_status_service_set_server_name(
-            server_name_tuple->value->cstring
-        );
+        const int32_t state_value =
+            connection_state_tuple->value->int32;
 
-        APP_LOG(
-            APP_LOG_LEVEL_INFO,
-            "Received live server name: %s",
-            server_name_tuple->value->cstring
-        );
+        if (state_value == 1)
+        {
+            server_status_service_set_connection_state(
+                CONNECTION_STATE_CONNECTED
+            );
+
+            APP_LOG(
+                APP_LOG_LEVEL_INFO,
+                "Connection state: connected"
+            );
+        }
+        else if (state_value == 2)
+        {
+            server_status_service_set_connection_state(
+                CONNECTION_STATE_FAILED
+            );
+
+            APP_LOG(
+                APP_LOG_LEVEL_INFO,
+                "Connection state: failed"
+            );
+        }
     }
+
+        Tuple *server_name_tuple =
+            dict_find(iterator, MESSAGE_KEY_serverName);
+
+        if (server_name_tuple != NULL)
+        {
+            server_status_service_set_server_name(
+                server_name_tuple->value->cstring
+            );
+
+            APP_LOG(
+                APP_LOG_LEVEL_INFO,
+                "Received live server name: %s",
+                server_name_tuple->value->cstring
+            );
+        }
 
     Tuple *server_online_tuple =
     dict_find(iterator, MESSAGE_KEY_serverOnline);
@@ -330,7 +365,16 @@ static void prv_inbox_received_handler(
             "Received live download slot 2");
     }
 
-    server_status_service_mark_updated();
+    /*
+    * A real status snapshot always contains serverName.
+    * Connection-state-only messages must not advance
+    * the last-good-snapshot timestamp.
+    */
+    if (server_name_tuple != NULL)
+    {
+        server_status_service_mark_updated();
+    }
+
     server_window_refresh();
     storage_window_refresh();
     downloads_window_refresh();

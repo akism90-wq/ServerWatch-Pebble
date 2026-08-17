@@ -673,6 +673,34 @@ void download_card_update(
             !suspicious);
     }
 
+    if (card->size_layer != NULL)
+    {
+        Layer *const size_layer =
+            text_layer_get_layer(
+                card->size_layer);
+
+        GRect size_frame =
+            layer_get_frame(size_layer);
+
+        const GRect content_bounds =
+            layer_get_bounds(
+                card->content_layer);
+
+        const int16_t size_text_x =
+            suspicious ? 12 : 0;
+
+        size_frame.origin.x =
+            size_text_x;
+
+        size_frame.size.w =
+            content_bounds.size.w -
+            size_text_x;
+
+        layer_set_frame(
+            size_layer,
+            size_frame);
+    }
+
     text_layer_set_text(
         card->subtitle_layer,
         subtitle != NULL ? subtitle : ""

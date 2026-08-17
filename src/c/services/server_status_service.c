@@ -193,11 +193,12 @@ void server_status_service_set_service_states(
 
 void server_status_service_mark_updated(void)
 {
-    time_t now = 0U;
+    time_t now = 0;
 
-    (void)time_ms(&now, NULL);
+    now = time(NULL);
 
     s_status.last_update_time = now;
+    s_status.has_received_snapshot = true;
 }
 
 uint32_t server_status_service_get_update_age_seconds(void)
@@ -419,5 +420,16 @@ void server_status_service_set_download(
 
     download->size_mb = size_mb;
     download->suspicious = suspicious;
+}
+
+void server_status_service_set_connection_state(
+    ConnectionState state)
+{
+    s_status.connection_state = state;
+}
+
+bool server_status_service_has_received_snapshot(void)
+{
+    return s_status.has_received_snapshot;
 }
 

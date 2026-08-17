@@ -61,3 +61,8 @@ void server_status_service_set_download(
 
 void server_status_service_set_active_download_count(
     int active_downloads);
+
+void server_status_service_set_connection_state(
+    ConnectionState state);
+
+bool server_status_service_has_received_snapshot(void);

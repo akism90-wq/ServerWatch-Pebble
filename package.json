@@ -75,7 +75,9 @@
       "download2SpeedText",
       "download2EtaText",
       "download2SizeMb",
-      "download2Suspicious"
+      "download2Suspicious",
+
+      "connectionState"
     ],
     "resources": {
       "media": []
