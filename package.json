@@ -52,6 +52,7 @@
 
       "download0Name",
       "download0Subtitle",
+      "download0Quality",
       "download0State",
       "download0ProgressPercent",
       "download0SpeedText",
@@ -61,6 +62,7 @@
 
       "download1Name",
       "download1Subtitle",
+      "download1Quality",
       "download1State",
       "download1ProgressPercent",
       "download1SpeedText",
@@ -70,6 +72,7 @@
 
       "download2Name",
       "download2Subtitle",
+      "download2Quality",
       "download2State",
       "download2ProgressPercent",
       "download2SpeedText",
@@ -77,7 +80,8 @@
       "download2SizeMb",
       "download2Suspicious",
 
-      "connectionState"
+      "connectionState",
+      "refreshRequest"
     ],
     "resources": {
       "media": []

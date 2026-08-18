@@ -20,6 +20,7 @@
 #define DOWNLOAD_SPEED_TEXT_LENGTH 16
 #define DOWNLOAD_ETA_TEXT_LENGTH 16
 #define DOWNLOAD_SUBTITLE_LENGTH 32
+#define DOWNLOAD_QUALITY_LENGTH 8
 #define DOWNLOAD_STATE_LENGTH 16
 #define ATTENTION_TEXT_LENGTH 64
 #define SERVICE_NAME_LENGTH 16
@@ -30,6 +31,7 @@ typedef struct
 {
     char name[DOWNLOAD_NAME_LENGTH];
     char subtitle[DOWNLOAD_SUBTITLE_LENGTH];
+    char quality[DOWNLOAD_QUALITY_LENGTH];
     char state[DOWNLOAD_STATE_LENGTH];
 
     int progress_percent;

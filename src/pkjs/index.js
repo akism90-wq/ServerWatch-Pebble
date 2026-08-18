@@ -254,6 +254,21 @@ function buildStatusMessage(status) {
                 ? download2.subtitle
                 : "",
 
+        "download0Quality":
+            download0
+                ? download0.quality
+                : "",
+
+        "download1Quality":
+            download1
+                ? download1.quality
+                : "",
+
+        "download2Quality":
+            download2
+                ? download2.quality
+                : "",
+
         "download0State":
             download0
                 ? download0.state
@@ -511,3 +526,16 @@ Pebble.addEventListener("ready", function () {
         fetchServerStatus();
     }, 5000);
 });
+
+Pebble.addEventListener(
+    "appmessage",
+    function (event) {
+        if (event.payload.refreshRequest === 1) {
+            console.log(
+                "ServerWatch refresh requested by watch"
+            );
+
+            fetchServerStatus();
+        }
+    }
+);

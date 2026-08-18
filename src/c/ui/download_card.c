@@ -23,6 +23,7 @@ struct DownloadCard
     int progress_percent;
 
     char progress_text[16];
+    char subtitle_display_text[64];
     char eta_display_text[32];
     char size_display_text[32];
 };
@@ -175,6 +176,7 @@ DownloadCard *download_card_create(
     GRect frame,
     const char *name,
     const char *subtitle,
+    const char *quality,
     const char *state,
     int progress_percent,
     const char *speed_text,
@@ -532,6 +534,7 @@ DownloadCard *download_card_create(
         card,
         name,
         subtitle,
+        quality,
         state,
         progress_percent,
         speed_text,
@@ -609,6 +612,7 @@ void download_card_update(
     DownloadCard *card,
     const char *name,
     const char *subtitle,
+    const char *quality,
     const char *state,
     int progress_percent,
     const char *speed_text,
@@ -701,9 +705,49 @@ void download_card_update(
             size_frame);
     }
 
+    const char *const safe_subtitle =
+        subtitle != NULL ? subtitle : "";
+
+    const char *const safe_quality =
+        quality != NULL ? quality : "";
+
+    if ((safe_subtitle[0] != '\0') &&
+        (safe_quality[0] != '\0'))
+    {
+        snprintf(
+            card->subtitle_display_text,
+            sizeof(card->subtitle_display_text),
+            "%s • %s",
+            safe_subtitle,
+            safe_quality
+        );
+    }
+    else if (safe_subtitle[0] != '\0')
+    {
+        snprintf(
+            card->subtitle_display_text,
+            sizeof(card->subtitle_display_text),
+            "%s",
+            safe_subtitle
+        );
+    }
+    else if (safe_quality[0] != '\0')
+    {
+        snprintf(
+            card->subtitle_display_text,
+            sizeof(card->subtitle_display_text),
+            "%s",
+            safe_quality
+        );
+    }
+    else
+    {
+        card->subtitle_display_text[0] = '\0';
+    }
+
     text_layer_set_text(
         card->subtitle_layer,
-        subtitle != NULL ? subtitle : ""
+        card->subtitle_display_text
     );
 
     text_layer_set_text(

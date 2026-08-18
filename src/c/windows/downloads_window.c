@@ -250,6 +250,7 @@ static void prv_window_load(Window *window)
             ),
             download->name,
             download->subtitle,
+            download->quality,
             download->state,
             download->progress_percent,
             download->speed_text,
@@ -381,9 +382,18 @@ static void prv_update_layout(
     int visible_downloads,
     int overflow_count)
 {
-    int16_t footer_y =
-        DOWNLOAD_CARD_START_Y +
-        (visible_downloads * DOWNLOAD_CARD_STRIDE);
+    int16_t footer_y;
+
+    if (visible_downloads == 0)
+    {
+        footer_y = 104;
+    }
+    else
+    {
+        footer_y =
+            DOWNLOAD_CARD_START_Y +
+            (visible_downloads * DOWNLOAD_CARD_STRIDE);
+    }
 
     if (overflow_count > 0)
     {
@@ -677,6 +687,7 @@ void downloads_window_refresh(void)
             card,
             download->name,
             download->subtitle,
+            download->quality,
             download->state,
             download->progress_percent,
             download->speed_text,

@@ -218,6 +218,9 @@ static void prv_inbox_received_handler(
     Tuple *download0_subtitle_tuple =
         dict_find(iterator, MESSAGE_KEY_download0Subtitle);
 
+    Tuple *download0_quality_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0Quality);
+
     Tuple *download0_state_tuple =
         dict_find(iterator, MESSAGE_KEY_download0State);
 
@@ -242,6 +245,9 @@ static void prv_inbox_received_handler(
     Tuple *download1_subtitle_tuple =
         dict_find(iterator, MESSAGE_KEY_download1Subtitle);
 
+    Tuple *download1_quality_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1Quality);
+
     Tuple *download1_state_tuple =
         dict_find(iterator, MESSAGE_KEY_download1State);
 
@@ -265,6 +271,9 @@ static void prv_inbox_received_handler(
 
     Tuple *download2_subtitle_tuple =
         dict_find(iterator, MESSAGE_KEY_download2Subtitle);
+
+    Tuple *download2_quality_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2Quality);
 
     Tuple *download2_state_tuple =
         dict_find(iterator, MESSAGE_KEY_download2State);
@@ -292,6 +301,7 @@ static void prv_inbox_received_handler(
 
     if ((download0_name_tuple != NULL) &&
         (download0_subtitle_tuple != NULL) &&
+        (download0_quality_tuple != NULL) &&
         (download0_state_tuple != NULL) &&
         (download0_progress_tuple != NULL) &&
         (download0_speed_tuple != NULL) &&
@@ -303,6 +313,7 @@ static void prv_inbox_received_handler(
             0,
             download0_name_tuple->value->cstring,
             download0_subtitle_tuple->value->cstring,
+            download0_quality_tuple->value->cstring,
             download0_state_tuple->value->cstring,
             download0_progress_tuple->value->int32,
             download0_speed_tuple->value->cstring,
@@ -317,6 +328,7 @@ static void prv_inbox_received_handler(
     
     if ((download1_name_tuple != NULL) &&
         (download1_subtitle_tuple != NULL) &&
+        (download1_quality_tuple != NULL) &&
         (download1_state_tuple != NULL) &&
         (download1_progress_tuple != NULL) &&
         (download1_speed_tuple != NULL) &&
@@ -328,6 +340,7 @@ static void prv_inbox_received_handler(
             1,
             download1_name_tuple->value->cstring,
             download1_subtitle_tuple->value->cstring,
+            download1_quality_tuple->value->cstring,
             download1_state_tuple->value->cstring,
             download1_progress_tuple->value->int32,
             download1_speed_tuple->value->cstring,
@@ -342,6 +355,7 @@ static void prv_inbox_received_handler(
 
     if ((download2_name_tuple != NULL) &&
         (download2_subtitle_tuple != NULL) &&
+        (download2_quality_tuple != NULL) &&
         (download2_state_tuple != NULL) &&
         (download2_progress_tuple != NULL) &&
         (download2_speed_tuple != NULL) &&
@@ -353,6 +367,7 @@ static void prv_inbox_received_handler(
             2,
             download2_name_tuple->value->cstring,
             download2_subtitle_tuple->value->cstring,
+            download2_quality_tuple->value->cstring,
             download2_state_tuple->value->cstring,
             download2_progress_tuple->value->int32,
             download2_speed_tuple->value->cstring,
@@ -380,12 +395,43 @@ static void prv_inbox_received_handler(
     downloads_window_refresh();
 }
 
+static void prv_request_refresh(void)
+{
+    DictionaryIterator *iterator = NULL;
+
+    const AppMessageResult result =
+        app_message_outbox_begin(&iterator);
+
+    if ((result == APP_MSG_OK) &&
+        (iterator != NULL))
+    {
+        dict_write_uint8(
+            iterator,
+            MESSAGE_KEY_refreshRequest,
+            1);
+
+        app_message_outbox_send();
+    }
+}
+
+static void prv_app_focus_changed(bool in_focus)
+{
+    if (in_focus)
+    {
+        prv_request_refresh();
+    }
+}
+
 static void prv_init(void)
 {
-    app_message_register_inbox_received(prv_inbox_received_handler);
+    app_message_register_inbox_received(
+        prv_inbox_received_handler);
 
     const AppMessageResult open_result =
         app_message_open(1024, 128);
+
+    app_focus_service_subscribe(
+        prv_app_focus_changed);
 
     APP_LOG(
         APP_LOG_LEVEL_INFO,
@@ -394,10 +440,13 @@ static void prv_init(void)
 
     s_home_window = home_window_create();
     window_stack_push(s_home_window, true);
+
+    prv_request_refresh();
 }
 
 static void prv_deinit(void)
 {
+    app_focus_service_unsubscribe();
     home_window_destroy(s_home_window);
     s_home_window = NULL;
 }

@@ -383,6 +383,7 @@ void server_status_service_set_download(
     int index,
     const char *name,
     const char *subtitle,
+    const char *quality,
     const char *state,
     int progress_percent,
     const char *speed_text,
@@ -410,6 +411,12 @@ void server_status_service_set_download(
         sizeof(download->subtitle),
         "%s",
         subtitle != NULL ? subtitle : "");
+
+    snprintf(
+        download->quality,
+        sizeof(download->quality),
+        "%s",
+        quality != NULL ? quality : "");
 
     snprintf(
         download->state,

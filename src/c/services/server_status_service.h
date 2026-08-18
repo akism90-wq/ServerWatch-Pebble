@@ -55,6 +55,7 @@ void server_status_service_set_download(
     int index,
     const char *name,
     const char *subtitle,
+    const char *quality,
     const char *state,
     int progress_percent,
     const char *speed_text,
