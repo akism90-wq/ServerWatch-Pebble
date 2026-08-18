@@ -34,6 +34,10 @@ void server_status_service_format_update_age(
     size_t buffer_size
 );
 
+void server_status_service_format_update_age_value(
+    char *buffer,
+    size_t buffer_size);
+    
 void server_status_service_set_storage(
     int storage_used_percent,
     bool storage_warning,

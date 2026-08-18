@@ -5,6 +5,7 @@
 #include "../services/server_status_service.h"
 #include "../ui/download_card.h"
 #include "../ui/updated_age_view.h"
+#include "../ui/connection_status_view.h"
 
 #define DOWNLOAD_CARD_START_Y 44
 #define DOWNLOAD_CARD_STRIDE 170
@@ -22,6 +23,7 @@ static TextLayer *s_title_layer;
 static TextLayer *s_empty_layer;
 static TextLayer *s_overflow_layer;
 static UpdatedAgeView *s_updated_age_view;
+static ConnectionStatusView *s_connection_status_view;
 
 static DownloadCard *s_download_cards[DOWNLOAD_CARD_COUNT];
 
@@ -32,10 +34,7 @@ static int s_selected_download_index =
 
 static bool s_footer_visible;
 
-static void prv_update_selection(
-    int visible_downloads
-);
-
+static void prv_update_selection(int visible_downloads);
 static void prv_scroll_to_selected(void);
 
 static void prv_up_click_handler(
@@ -264,6 +263,11 @@ static void prv_window_load(Window *window)
         GRect(12, 564, bounds.size.w - 24, 40)
     );
 
+    s_connection_status_view =
+        connection_status_view_create(
+            GRect(12, 604, bounds.size.w - 24, 44)
+        );    
+
     scroll_layer_add_child(
         s_scroll_layer,
         text_layer_get_layer(s_title_layer)
@@ -309,6 +313,15 @@ static void prv_window_load(Window *window)
         );
     }
 
+    if (s_connection_status_view != NULL)
+    {
+        scroll_layer_add_child(
+            s_scroll_layer,
+            connection_status_view_get_layer(
+                s_connection_status_view)
+        );
+    }
+
     layer_add_child(
         window_layer,
         scroll_layer_get_layer(s_scroll_layer)
@@ -320,6 +333,10 @@ static void prv_window_load(Window *window)
 static void prv_window_unload(Window *window)
 {
     s_footer_visible = false;
+
+    connection_status_view_destroy(
+        s_connection_status_view);
+    s_connection_status_view = NULL;
 
     updated_age_view_destroy(
         s_updated_age_view);
@@ -504,6 +521,98 @@ void downloads_window_refresh(void)
         return;
     }
 
+    const bool has_snapshot =
+        status->has_received_snapshot;
+
+    /*
+     * No successful snapshot has ever been received.
+     * Never expose development seed data as genuine data.
+     */
+    if (!has_snapshot)
+    {
+        if (s_empty_layer != NULL)
+        {
+            layer_set_hidden(
+                text_layer_get_layer(s_empty_layer),
+                true
+            );
+        }
+
+        if (s_overflow_layer != NULL)
+        {
+            layer_set_hidden(
+                text_layer_get_layer(s_overflow_layer),
+                true
+            );
+        }
+
+        for (int index = 0;
+             index < SERVER_DOWNLOAD_COUNT;
+             ++index)
+        {
+            if (s_download_cards[index] == NULL)
+            {
+                continue;
+            }
+
+            layer_set_hidden(
+                download_card_get_layer(
+                    s_download_cards[index]),
+                true
+            );
+        }
+
+        if (s_updated_age_view != NULL)
+        {
+            layer_set_hidden(
+                updated_age_view_get_layer(
+                    s_updated_age_view),
+                true
+            );
+        }
+
+        prv_update_selection(0);
+
+        connection_status_view_refresh(
+            s_connection_status_view
+        );
+
+        /*
+         * Connection failure is the only meaningful
+         * content before the first valid snapshot.
+         */
+        if (s_connection_status_view != NULL)
+        {
+            Layer *const connection_layer =
+                connection_status_view_get_layer(
+                    s_connection_status_view);
+
+            GRect connection_frame =
+                layer_get_frame(connection_layer);
+
+            connection_frame.origin.y = 52;
+
+            layer_set_frame(
+                connection_layer,
+                connection_frame
+            );
+        }
+
+        const GRect scroll_bounds =
+            layer_get_bounds(
+                scroll_layer_get_layer(
+                    s_scroll_layer));
+
+        scroll_layer_set_content_size(
+            s_scroll_layer,
+            GSize(
+                scroll_bounds.size.w,
+                scroll_bounds.size.h)
+        );
+
+        return;
+    }
+
     const int active_downloads =
         status->active_downloads;
 
@@ -518,8 +627,8 @@ void downloads_window_refresh(void)
             : 0;
 
     /*
-     * Show the empty-state message only when there
-     * are no active downloads.
+     * A genuine zero-download snapshot may show the
+     * normal empty state.
      */
     if (s_empty_layer != NULL)
     {
@@ -530,9 +639,8 @@ void downloads_window_refresh(void)
     }
 
     /*
-     * Update the currently visible download cards.
-     * Cards beyond the current active count remain
-     * allocated but are hidden.
+     * Update and expose the cards represented by the
+     * last-good snapshot.
      */
     for (int index = 0;
          index < SERVER_DOWNLOAD_COUNT;
@@ -579,8 +687,8 @@ void downloads_window_refresh(void)
     }
 
     /*
-     * Show overflow information when the Agent
-     * reports more downloads than Pebble can display.
+     * Preserve the real Agent count even though Pebble
+     * displays at most three download cards.
      */
     if (s_overflow_layer != NULL)
     {
@@ -600,8 +708,7 @@ void downloads_window_refresh(void)
 
             layer_set_hidden(
                 text_layer_get_layer(
-                    s_overflow_layer
-                ),
+                    s_overflow_layer),
                 false
             );
         }
@@ -609,19 +716,45 @@ void downloads_window_refresh(void)
         {
             layer_set_hidden(
                 text_layer_get_layer(
-                    s_overflow_layer
-                ),
+                    s_overflow_layer),
                 true
             );
         }
     }
 
+    const bool connection_lost =
+        status->connection_state ==
+        CONNECTION_STATE_FAILED;
+
     /*
-     * Keep the shared snapshot age current whenever
-     * a new Agent snapshot arrives.
+     * Connected:
+     *     Updated
+     *     Just now
+     *
+     * Connection lost:
+     *     Connection lost
+     *     Cached - 2 min ago
+     *
+     * Never show both blocks simultaneously.
      */
-    updated_age_view_refresh(
-        s_updated_age_view
+    if (s_updated_age_view != NULL)
+    {
+        layer_set_hidden(
+            updated_age_view_get_layer(
+                s_updated_age_view),
+            connection_lost
+        );
+
+        if (!connection_lost)
+        {
+            updated_age_view_refresh(
+                s_updated_age_view
+            );
+        }
+    }
+
+    connection_status_view_refresh(
+        s_connection_status_view
     );
 
     prv_update_selection(
@@ -629,13 +762,82 @@ void downloads_window_refresh(void)
     );
 
     /*
-     * Position the overflow and Updated footer below
-     * however many download cards are currently shown.
+     * Establish the normal footer position. The connection
+     * footer will reuse the Updated footer position when stale.
      */
     prv_update_layout(
         visible_downloads,
         overflow_count
     );
+
+    if (connection_lost &&
+        (s_connection_status_view != NULL) &&
+        (s_updated_age_view != NULL))
+    {
+        Layer *const updated_layer =
+            updated_age_view_get_layer(
+                s_updated_age_view);
+
+        Layer *const connection_layer =
+            connection_status_view_get_layer(
+                s_connection_status_view);
+
+        const GRect updated_frame =
+            layer_get_frame(updated_layer);
+
+        GRect connection_frame =
+            layer_get_frame(connection_layer);
+
+        /*
+         * Replace UpdatedAgeView in-place rather than
+         * appending another footer underneath it.
+         */
+        connection_frame.origin.y =
+            updated_frame.origin.y;
+
+        layer_set_frame(
+            connection_layer,
+            connection_frame
+        );
+
+        const GRect scroll_bounds =
+            layer_get_bounds(
+                scroll_layer_get_layer(
+                    s_scroll_layer));
+
+        const int16_t content_height =
+            connection_frame.origin.y +
+            connection_frame.size.h +
+            DOWNLOAD_FOOTER_GAP;
+
+        scroll_layer_set_content_size(
+            s_scroll_layer,
+            GSize(
+                scroll_bounds.size.w,
+                content_height)
+        );
+
+        /*
+         * Background polling must not disturb footer mode.
+         */
+        if (s_footer_visible)
+        {
+            int16_t target_y =
+                content_height -
+                scroll_bounds.size.h;
+
+            if (target_y < 0)
+            {
+                target_y = 0;
+            }
+
+            scroll_layer_set_content_offset(
+                s_scroll_layer,
+                GPoint(0, -target_y),
+                false
+            );
+        }
+    }
 }
 
 void downloads_window_destroy(Window *window)

@@ -222,14 +222,15 @@ uint32_t server_status_service_get_update_age_seconds(void)
     return (uint32_t)(now - status->last_update_time);
 }
 
-void server_status_service_format_update_age(
+void server_status_service_format_update_age_value(
     char *buffer,
     size_t buffer_size)
 {
     const ServerStatus *const status =
         server_status_service_get();
 
-    if (buffer == NULL || buffer_size == 0U)
+    if ((buffer == NULL) ||
+        (buffer_size == 0U))
     {
         return;
     }
@@ -239,7 +240,7 @@ void server_status_service_format_update_age(
         snprintf(
             buffer,
             buffer_size,
-            "Updated\nNever");
+            "Never");
         return;
     }
 
@@ -251,21 +252,21 @@ void server_status_service_format_update_age(
         snprintf(
             buffer,
             buffer_size,
-            "Updated\nJust now");
+            "Just now");
     }
     else if (age_seconds < 25U)
     {
         snprintf(
             buffer,
             buffer_size,
-            "Updated\n10 sec ago");
+            "10 sec ago");
     }
     else if (age_seconds < 60U)
     {
         snprintf(
             buffer,
             buffer_size,
-            "Updated\n25 sec ago");
+            "25 sec ago");
     }
     else if (age_seconds < 3600U)
     {
@@ -275,7 +276,7 @@ void server_status_service_format_update_age(
         snprintf(
             buffer,
             buffer_size,
-            "Updated\n%lu min ago",
+            "%lu min ago",
             (unsigned long)minutes);
     }
     else if (age_seconds < 86400U)
@@ -286,7 +287,7 @@ void server_status_service_format_update_age(
         snprintf(
             buffer,
             buffer_size,
-            "Updated\n%lu hr ago",
+            "%lu hr ago",
             (unsigned long)hours);
     }
     else
@@ -297,10 +298,33 @@ void server_status_service_format_update_age(
         snprintf(
             buffer,
             buffer_size,
-            "Updated\n%lu day%s ago",
+            "%lu day%s ago",
             (unsigned long)days,
             (days == 1U) ? "" : "s");
     }
+}
+
+void server_status_service_format_update_age(
+    char *buffer,
+    size_t buffer_size)
+{
+    if ((buffer == NULL) ||
+        (buffer_size == 0U))
+    {
+        return;
+    }
+
+    char age_text[24];
+
+    server_status_service_format_update_age_value(
+        age_text,
+        sizeof(age_text));
+
+    snprintf(
+        buffer,
+        buffer_size,
+        "Updated\n%s",
+        age_text);
 }
 
 void server_status_service_set_storage(
