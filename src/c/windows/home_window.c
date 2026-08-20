@@ -50,7 +50,7 @@ static WindowDescriptor s_destinations[HOME_DESTINATION_COUNT] = {
     },
 };
 
-static char s_attention_text[32];
+static char s_attention_text[40];
 static char s_server_text[24];
 static char s_storage_text[24];
 static char s_downloads_text[32];

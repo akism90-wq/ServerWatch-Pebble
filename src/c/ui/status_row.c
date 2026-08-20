@@ -138,3 +138,18 @@ void status_row_destroy(StatusRow *row)
 
     free(row);
 }
+
+void status_row_set_text(
+    StatusRow *row,
+    const char *text)
+{
+    if ((row == NULL) ||
+        (row->text_layer == NULL))
+    {
+        return;
+    }
+
+    text_layer_set_text(
+        row->text_layer,
+        text != NULL ? text : "");
+}

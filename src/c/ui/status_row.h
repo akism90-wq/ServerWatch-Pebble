@@ -25,3 +25,9 @@ void status_row_set_emphasized(
 );
 
 void status_row_destroy(StatusRow *row);
+
+void status_row_set_text(
+    StatusRow *row,
+    const char *text
+);
+
