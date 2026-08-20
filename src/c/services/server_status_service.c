@@ -379,6 +379,59 @@ void server_status_service_set_active_download_count(
             : active_downloads;
 }
 
+void server_status_service_set_attention_item_count(
+    int attention_item_count)
+{
+    if (attention_item_count < 0)
+    {
+        s_status.attention_item_count = 0;
+    }
+    else if (attention_item_count >
+             SERVER_ATTENTION_ITEM_COUNT)
+    {
+        s_status.attention_item_count =
+            SERVER_ATTENTION_ITEM_COUNT;
+    }
+    else
+    {
+        s_status.attention_item_count =
+            attention_item_count;
+    }
+
+    s_status.has_attention =
+        s_status.attention_item_count > 0;
+}
+
+void server_status_service_set_attention_item(
+    int index,
+    const char *text,
+    AttentionSeverity severity)
+{
+    if ((index < 0) ||
+        (index >= SERVER_ATTENTION_ITEM_COUNT))
+    {
+        return;
+    }
+
+    AttentionItem *const item =
+        &s_status.attention_items[index];
+
+    snprintf(
+        item->text,
+        sizeof(item->text),
+        "%s",
+        text != NULL ? text : "");
+
+    if (severity > ATTENTION_SEVERITY_CRITICAL)
+    {
+        item->severity = ATTENTION_SEVERITY_INFO;
+    }
+    else
+    {
+        item->severity = severity;
+    }
+}
+
 void server_status_service_set_download(
     int index,
     const char *name,

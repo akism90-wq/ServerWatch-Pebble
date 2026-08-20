@@ -113,9 +113,41 @@ function getPrioritizedDownloads(downloads) {
     return result;
 }
 
+function getAttentionSeverity(alert) {
+    if (alert.severity === "Problem") {
+        return 2;
+    }
+
+    if (alert.severity === "Warning") {
+        return 1;
+    }
+
+    return 0;
+}
+
+function getAttention(alerts, index) {
+    return index < alerts.length && index < 8
+        ? alerts[index]
+        : null;
+}
+
 function buildStatusMessage(status) {
     var prioritizedDownloads =
         getPrioritizedDownloads(status.downloads);
+
+    var attentionCount = Math.min(
+        status.alerts.length,
+        8
+    );
+
+    var attention0 = getAttention(status.alerts, 0);
+    var attention1 = getAttention(status.alerts, 1);
+    var attention2 = getAttention(status.alerts, 2);
+    var attention3 = getAttention(status.alerts, 3);
+    var attention4 = getAttention(status.alerts, 4);
+    var attention5 = getAttention(status.alerts, 5);
+    var attention6 = getAttention(status.alerts, 6);
+    var attention7 = getAttention(status.alerts, 7);
 
     var download0 =
         getDownload(prioritizedDownloads, 0);
@@ -227,8 +259,91 @@ function buildStatusMessage(status) {
                 ) * 10
             ),
 
+        "attentionCount":
+            attentionCount,
+
         "downloadCount":
             status.downloads.length,
+
+        "attention0Text":
+            attention0
+                ? attention0.title
+                : "",
+
+        "attention0Severity":
+            attention0
+                ? getAttentionSeverity(attention0)
+                : 0,
+
+        "attention1Text":
+            attention1
+                ? attention1.title
+                : "",
+
+        "attention1Severity":
+            attention1
+                ? getAttentionSeverity(attention1)
+                : 0,
+                
+        "attention2Text":
+            attention2
+                ? attention2.title
+                : "",
+
+        "attention2Severity":
+            attention2
+                ? getAttentionSeverity(attention2)
+                : 0,
+
+        "attention3Text":
+            attention3
+                ? attention3.title
+                : "",
+
+        "attention3Severity":
+            attention3
+                ? getAttentionSeverity(attention3)
+                : 0,
+
+        "attention4Text":
+            attention4
+                ? attention4.title
+                : "",
+
+        "attention4Severity":
+            attention4
+                ? getAttentionSeverity(attention4)
+                : 0,
+
+        "attention5Text":
+            attention5
+                ? attention5.title
+                : "",
+
+        "attention5Severity":
+            attention5
+                ? getAttentionSeverity(attention5)
+                : 0,
+
+        "attention6Text":
+            attention6
+                ? attention6.title
+                : "",
+                
+        "attention6Severity":
+            attention6
+                ? getAttentionSeverity(attention6)
+                : 0,
+
+        "attention7Text":
+            attention7
+                ? attention7.title
+                : "",
+
+        "attention7Severity":
+            attention7
+                ? getAttentionSeverity(attention7)
+                : 0,               
 
         "download0Name":
             download0 ? download0.title : "",

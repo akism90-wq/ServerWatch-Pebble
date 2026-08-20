@@ -7,6 +7,30 @@
 
 static Window *s_home_window;
 
+static void prv_set_attention_item_from_message(
+    DictionaryIterator *iterator,
+    int index,
+    uint32_t text_key,
+    uint32_t severity_key)
+{
+    Tuple *text_tuple =
+        dict_find(iterator, text_key);
+
+    Tuple *severity_tuple =
+        dict_find(iterator, severity_key);
+
+    if ((text_tuple == NULL) ||
+        (severity_tuple == NULL))
+    {
+        return;
+    }
+
+    server_status_service_set_attention_item(
+        index,
+        text_tuple->value->cstring,
+        (AttentionSeverity)severity_tuple->value->int32);
+}
+
 static void prv_inbox_received_handler(
     DictionaryIterator *iterator,
     void *context)
@@ -208,9 +232,66 @@ static void prv_inbox_received_handler(
             APP_LOG_LEVEL_INFO,
             "Received live storage status");
     }
+
+    Tuple *attention_count_tuple =
+        dict_find(iterator, MESSAGE_KEY_attentionCount);
+
+    if (attention_count_tuple != NULL)
+    {
+        server_status_service_set_attention_item_count(
+            attention_count_tuple->value->int32);
+    }
+    
+    prv_set_attention_item_from_message(
+        iterator,
+        0,
+        MESSAGE_KEY_attention0Text,
+        MESSAGE_KEY_attention0Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        1,
+        MESSAGE_KEY_attention1Text,
+        MESSAGE_KEY_attention1Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        2,
+        MESSAGE_KEY_attention2Text,
+        MESSAGE_KEY_attention2Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        3,
+        MESSAGE_KEY_attention3Text,
+        MESSAGE_KEY_attention3Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        4,
+        MESSAGE_KEY_attention4Text,
+        MESSAGE_KEY_attention4Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        5,
+        MESSAGE_KEY_attention5Text,
+        MESSAGE_KEY_attention5Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        6,
+        MESSAGE_KEY_attention6Text,
+        MESSAGE_KEY_attention6Severity);
+
+    prv_set_attention_item_from_message(
+        iterator,
+        7,
+        MESSAGE_KEY_attention7Text,
+        MESSAGE_KEY_attention7Severity);    
     
     Tuple *download_count_tuple =
-    dict_find(iterator, MESSAGE_KEY_downloadCount);
+        dict_find(iterator, MESSAGE_KEY_downloadCount);
 
     Tuple *download0_name_tuple =
         dict_find(iterator, MESSAGE_KEY_download0Name);
@@ -390,6 +471,7 @@ static void prv_inbox_received_handler(
         server_status_service_mark_updated();
     }
 
+    attention_window_refresh();
     server_window_refresh();
     storage_window_refresh();
     downloads_window_refresh();

@@ -81,7 +81,26 @@
       "download2Suspicious",
 
       "connectionState",
-      "refreshRequest"
+      "refreshRequest",
+
+      "attentionCount",
+
+      "attention0Text",
+      "attention0Severity",
+      "attention1Text",
+      "attention1Severity",
+      "attention2Text",
+      "attention2Severity",
+      "attention3Text",
+      "attention3Severity",
+      "attention4Text",
+      "attention4Severity",
+      "attention5Text",
+      "attention5Severity",
+      "attention6Text",
+      "attention6Severity",
+      "attention7Text",
+      "attention7Severity"
     ],
     "resources": {
       "media": []

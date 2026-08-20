@@ -67,6 +67,14 @@ void server_status_service_set_download(
 void server_status_service_set_active_download_count(
     int active_downloads);
 
+void server_status_service_set_attention_item(
+    int index,
+    const char *text,
+    AttentionSeverity severity);
+
+void server_status_service_set_attention_item_count(
+    int attention_item_count);
+
 void server_status_service_set_connection_state(
     ConnectionState state);
 
