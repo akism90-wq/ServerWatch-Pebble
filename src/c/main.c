@@ -471,6 +471,7 @@ static void prv_inbox_received_handler(
         server_status_service_mark_updated();
     }
 
+    home_window_refresh();
     attention_window_refresh();
     server_window_refresh();
     storage_window_refresh();

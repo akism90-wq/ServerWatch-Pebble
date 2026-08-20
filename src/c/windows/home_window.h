@@ -9,3 +9,4 @@
 
 Window *home_window_create(void);
 void home_window_destroy(Window *window);
+void home_window_refresh(void);
