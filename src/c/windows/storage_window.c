@@ -66,6 +66,7 @@ typedef enum
 static Layer *s_page_viewport_layer;
 static Layer *s_page_layers[STORAGE_PAGE_COUNT];
 static Layer *s_page_indicator_layer;
+static Layer *s_title_divider_layer;
 
 static TextLayer *s_title_layer;
 static TextLayer *s_summary_detail_layer;
@@ -93,6 +94,21 @@ static char s_downloads_text[16];
 static char s_other_text[16];
 
 static char s_summary_detail_text[48];
+
+static void prv_title_divider_update_proc(
+    Layer *layer,
+    GContext *context)
+{
+    graphics_context_set_fill_color(
+        context,
+        GColorBlack);
+
+    graphics_fill_rect(
+        context,
+        layer_get_bounds(layer),
+        0,
+        GCornerNone);
+}
 
 static void prv_format_metric_values(
     const ServerStatus *status)
@@ -727,6 +743,25 @@ static void prv_window_load(
         text_layer_get_layer(
             s_title_layer));
 
+    s_title_divider_layer =
+        layer_create(
+            GRect(
+                12,
+                39,
+                bounds.size.w - 24,
+                1));
+
+    if (s_title_divider_layer != NULL)
+    {
+        layer_set_update_proc(
+            s_title_divider_layer,
+            prv_title_divider_update_proc);
+
+        layer_add_child(
+            window_layer,
+            s_title_divider_layer);
+    }
+
     /*
      * Same proven viewport architecture as Server:
      * two side-by-side pages with an animated bounds origin.
@@ -1052,6 +1087,14 @@ static void prv_window_unload(
             s_summary_detail_layer);
 
         s_summary_detail_layer = NULL;
+    }
+
+    if (s_title_divider_layer != NULL)
+    {
+        layer_destroy(
+            s_title_divider_layer);
+
+        s_title_divider_layer = NULL;
     }
 
     if (s_page_indicator_layer != NULL)
