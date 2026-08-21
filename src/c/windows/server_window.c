@@ -21,7 +21,7 @@
 #define SUMMARY_DETAIL_Y 24
 #define SUMMARY_DETAIL_HEIGHT 20
 
-#define METRIC_START_Y 48
+#define METRIC_START_Y 40
 #define METRIC_HEIGHT 22
 #define METRIC_STRIDE 22
 
@@ -56,6 +56,7 @@ typedef enum
 static Layer *s_page_viewport_layer;
 static Layer *s_page_layers[SERVER_PAGE_COUNT];
 static Layer *s_page_indicator_layer;
+static Layer *s_diagnostic_layer;
 
 static TextLayer *s_title_layer;
 static TextLayer *s_summary_detail_layer;
@@ -76,6 +77,23 @@ static char s_ram_text[16];
 static char s_temperature_text[16];
 static char s_load_text[16];
 static char s_summary_detail_text[48];
+
+static void prv_diagnostic_update_proc(
+    Layer *layer,
+    GContext *context)
+{
+    (void)layer;
+
+    graphics_context_set_fill_color(
+        context,
+        GColorBlack);
+
+    graphics_fill_rect(
+        context,
+        layer_get_bounds(layer),
+        0,
+        GCornerNone);
+}
 
 static void prv_format_metric_values(
     const ServerStatus *status)
@@ -988,6 +1006,35 @@ static void prv_window_load(
      * Fixed page indicator — same native drawn-dot
      * language established by Attention.
      */
+    /*
+     * Diagnostic only:
+     * allocate one additional Layer but do not attach or draw it.
+     * This isolates layer_create() from layer_add_child()/rendering.
+     */
+    s_diagnostic_layer =
+        layer_create(
+            GRect(
+                12,
+                39,
+                bounds.size.w - 24,
+                1));
+
+    if (s_diagnostic_layer != NULL)
+    {
+        /*
+         * Diagnostic only:
+         * attach the otherwise-empty layer to the window.
+         * It has no update proc and draws nothing.
+         */
+        layer_set_update_proc(
+            s_diagnostic_layer,
+            prv_diagnostic_update_proc);
+
+        layer_add_child(
+            window_layer,
+            s_diagnostic_layer);
+    }
+
     s_page_indicator_layer =
         layer_create(
             GRect(
@@ -1065,6 +1112,14 @@ static void prv_window_unload(
             s_summary_detail_layer);
 
         s_summary_detail_layer = NULL;
+    }
+
+    if (s_diagnostic_layer != NULL)
+    {
+        layer_destroy(
+            s_diagnostic_layer);
+
+        s_diagnostic_layer = NULL;
     }
 
     if (s_page_indicator_layer != NULL)

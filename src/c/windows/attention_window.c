@@ -11,6 +11,10 @@
 #define TITLE_Y 8
 #define TITLE_HEIGHT 30
 
+#define TITLE_DIVIDER_X 12
+#define TITLE_DIVIDER_Y 39
+#define TITLE_DIVIDER_HEIGHT 1
+
 #define STATUS_Y 42
 #define STATUS_HEIGHT 24
 
@@ -32,6 +36,7 @@
 static Layer *s_page_viewport_layer;
 static Layer *s_page_layers[ATTENTION_MAX_PAGES];
 static Layer *s_page_indicator_layer;
+static Layer *s_title_divider_layer;
 
 static TextLayer *s_title_layer;
 static TextLayer *s_status_detail_layer;
@@ -107,6 +112,24 @@ static void prv_destroy_all_rows(void)
     {
         prv_destroy_page_rows(page);
     }
+}
+
+static void prv_title_divider_update_proc(
+    Layer *layer,
+    GContext *context)
+{
+    const GRect bounds =
+        layer_get_bounds(layer);
+
+    graphics_context_set_fill_color(
+        context,
+        GColorBlack);
+
+    graphics_fill_rect(
+        context,
+        bounds,
+        0,
+        GCornerNone);
 }
 
 static void prv_page_indicator_update_proc(
@@ -764,6 +787,26 @@ static void prv_window_load(
         text_layer_get_layer(
             s_title_layer));
 
+    s_title_divider_layer =
+        layer_create(
+            GRect(
+                TITLE_DIVIDER_X,
+                TITLE_DIVIDER_Y,
+                bounds.size.w -
+                    (2 * TITLE_DIVIDER_X),
+                TITLE_DIVIDER_HEIGHT));
+
+    if (s_title_divider_layer != NULL)
+    {
+        layer_set_update_proc(
+            s_title_divider_layer,
+            prv_title_divider_update_proc);
+
+        layer_add_child(
+            window_layer,
+            s_title_divider_layer);
+    }
+
     /*
      * Top-level status used only for healthy/no-attention
      * state and connection failure/loss.
@@ -926,6 +969,14 @@ static void prv_window_unload(
             s_page_viewport_layer);
 
         s_page_viewport_layer = NULL;
+    }
+
+    if (s_title_divider_layer != NULL)
+    {
+        layer_destroy(
+            s_title_divider_layer);
+
+        s_title_divider_layer = NULL;
     }
 
     if (s_title_layer != NULL)
