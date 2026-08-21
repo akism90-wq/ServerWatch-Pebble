@@ -6,3 +6,6 @@ build/
 
 # Local PebbleKit JS development configuration
 src/pkjs/config.local.js
+
+# Local PebbleKit JS configuration containing the ServerWatch API key
+src/pkjs/config.local.js
