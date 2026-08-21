@@ -1,12 +1,12 @@
 {
-  "name": "hello-pebble",
+  "name": "serverwatch",
   "author": "MakeAwesomeHappen",
   "version": "1.0.0",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "hello-pebble",
+    "displayName": "ServerWatch",
     "uuid": "028f3d79-c343-4adb-9a6b-94e71542157e",
     "sdkVersion": "3",
     "enableMultiJS": true,
@@ -103,6 +103,12 @@
       "type": "bitmap",
       "name": "IMAGE_HEALTHY_CAT",
       "file": "images/healthy_cat.png"
+      },
+      {
+      "type": "png",
+      "name": "IMAGE_MENU_ICON",
+      "file": "images/serverwatch_icon_25.png",
+      "menuIcon": true
       }
     ]
     }
