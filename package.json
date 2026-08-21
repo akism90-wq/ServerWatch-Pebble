@@ -98,7 +98,13 @@
       "attention7Severity"
     ],
     "resources": {
-      "media": []
+      "media": [
+      {
+      "type": "bitmap",
+      "name": "IMAGE_HEALTHY_CAT",
+      "file": "images/healthy_cat.png"
+      }
+    ]
     }
   }
 }
