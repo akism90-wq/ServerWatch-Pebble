@@ -1,9 +1,9 @@
 #include "attention_window.h"
 
+#include <stdio.h>
+
 #include "../services/server_status_service.h"
-#include "../ui/connection_status_view.h"
 #include "../ui/status_row.h"
-#include "../ui/updated_age_view.h"
 
 #define ATTENTION_ITEMS_PER_PAGE 4
 #define ATTENTION_MAX_PAGES 2
@@ -11,14 +11,17 @@
 #define TITLE_Y 8
 #define TITLE_HEIGHT 30
 
+#define STATUS_Y 42
+#define STATUS_HEIGHT 24
+
+#define STATUS_DETAIL_Y 66
+#define STATUS_DETAIL_HEIGHT 20
+
 #define PAGE_VIEWPORT_Y 46
 #define ROW_HEIGHT 24
 #define ROW_STRIDE 28
 #define PAGE_VIEWPORT_HEIGHT \
     (ATTENTION_ITEMS_PER_PAGE * ROW_STRIDE)
-
-#define FOOTER_HEIGHT 40
-#define FOOTER_BOTTOM_MARGIN 22
 
 #define PAGE_INDICATOR_HEIGHT 20
 #define PAGE_DOT_RADIUS 3
@@ -31,10 +34,9 @@ static Layer *s_page_layers[ATTENTION_MAX_PAGES];
 static Layer *s_page_indicator_layer;
 
 static TextLayer *s_title_layer;
-static TextLayer *s_empty_layer;
+static TextLayer *s_status_detail_layer;
 
-static UpdatedAgeView *s_updated_age_view;
-static ConnectionStatusView *s_connection_status_view;
+static StatusRow *s_summary_status_row;
 
 static StatusRow *s_attention_rows
     [ATTENTION_MAX_PAGES]
@@ -44,6 +46,8 @@ static int s_current_page;
 static int s_target_page;
 
 static bool s_is_animating;
+
+static char s_status_detail_text[48];
 
 static StatusIndicatorState prv_state_from_attention(
     AttentionSeverity severity)
@@ -114,6 +118,7 @@ static void prv_page_indicator_update_proc(
 
     if ((status == NULL) ||
         (!status->has_received_snapshot) ||
+        (status->attention_item_count <= 0) ||
         (prv_get_page_count(status) <= 1))
     {
         return;
@@ -173,25 +178,22 @@ static void prv_update_page_indicator(void)
         return;
     }
 
-    if ((status == NULL) ||
-        (!status->has_received_snapshot) ||
-        (prv_get_page_count(status) <= 1))
-    {
-        layer_set_hidden(
-            s_page_indicator_layer,
-            true);
-
-        return;
-    }
+    const bool visible =
+        (status != NULL) &&
+        status->has_received_snapshot &&
+        (status->attention_item_count > 0) &&
+        (prv_get_page_count(status) > 1);
 
     layer_set_hidden(
         s_page_indicator_layer,
-        false);
+        !visible);
 
-    layer_mark_dirty(
-        s_page_indicator_layer);
+    if (visible)
+    {
+        layer_mark_dirty(
+            s_page_indicator_layer);
+    }
 }
-
 
 static void prv_set_viewport_page(
     int page)
@@ -275,6 +277,131 @@ static void prv_build_page(
     }
 }
 
+static void prv_update_summary(
+    const ServerStatus *status)
+{
+    if ((status == NULL) ||
+        (s_summary_status_row == NULL) ||
+        (s_status_detail_layer == NULL))
+    {
+        return;
+    }
+
+    Layer *const summary_layer =
+        status_row_get_layer(
+            s_summary_status_row);
+
+    Layer *const detail_layer =
+        text_layer_get_layer(
+            s_status_detail_layer);
+
+    /*
+     * Cold-start failure:
+     * no genuine snapshot has ever been received.
+     */
+    if (!status->has_received_snapshot)
+    {
+        layer_set_hidden(
+            summary_layer,
+            false);
+
+        layer_set_hidden(
+            detail_layer,
+            true);
+
+        status_row_set_text(
+            s_summary_status_row,
+            "Connection failed");
+
+        status_row_set_state(
+            s_summary_status_row,
+            STATUS_INDICATOR_CRITICAL);
+
+        return;
+    }
+
+    /*
+     * A genuine snapshot exists but communication with the
+     * Agent has subsequently failed. Cached attention data
+     * remains visible below.
+     */
+    if (status->connection_state ==
+        CONNECTION_STATE_FAILED)
+    {
+        layer_set_hidden(
+            summary_layer,
+            false);
+
+        layer_set_hidden(
+            detail_layer,
+            false);
+
+        status_row_set_text(
+            s_summary_status_row,
+            "Connection lost");
+
+        status_row_set_state(
+            s_summary_status_row,
+            STATUS_INDICATOR_CRITICAL);
+
+        char age_text[24];
+
+        server_status_service_format_update_age_value(
+            age_text,
+            sizeof(age_text));
+
+        snprintf(
+            s_status_detail_text,
+            sizeof(s_status_detail_text),
+            "Cached - %s",
+            age_text);
+
+        text_layer_set_text(
+            s_status_detail_layer,
+            s_status_detail_text);
+
+        return;
+    }
+
+    /*
+     * With no attention items, the summary row becomes the
+     * healthy content for the screen.
+     */
+    if (status->attention_item_count <= 0)
+    {
+        layer_set_hidden(
+            summary_layer,
+            false);
+
+        layer_set_hidden(
+            detail_layer,
+            true);
+
+        status_row_set_text(
+            s_summary_status_row,
+            "No issues");
+
+        status_row_set_state(
+            s_summary_status_row,
+            STATUS_INDICATOR_HEALTHY);
+
+        return;
+    }
+
+    /*
+     * Live attention items communicate their own severity.
+     * Do not duplicate that information with another summary
+     * row above them.
+     */
+    layer_set_hidden(
+        summary_layer,
+        true);
+
+    layer_set_hidden(
+        detail_layer,
+        true);
+}
+
 static void prv_refresh_pages(void)
 {
     const ServerStatus *const status =
@@ -285,17 +412,8 @@ static void prv_refresh_pages(void)
         return;
     }
 
-    /*
-     * Never expose seeded development data before the
-     * first genuine ServerWatch snapshot.
-     */
     if (!status->has_received_snapshot)
     {
-        layer_set_hidden(
-            text_layer_get_layer(
-                s_empty_layer),
-            true);
-
         layer_set_hidden(
             s_page_layers[0],
             true);
@@ -308,16 +426,16 @@ static void prv_refresh_pages(void)
             s_page_indicator_layer,
             true);
 
+        s_current_page = 0;
+        s_target_page = 0;
+
+        prv_set_viewport_page(0);
+
         return;
     }
 
     const bool has_attention =
         status->attention_item_count > 0;
-
-    layer_set_hidden(
-        text_layer_get_layer(
-            s_empty_layer),
-        has_attention);
 
     layer_set_hidden(
         s_page_layers[0],
@@ -371,7 +489,43 @@ static void prv_refresh_pages(void)
     prv_update_page_indicator();
 }
 
-static void prv_refresh_footer(void)
+static void prv_update_page_layout(
+    const ServerStatus *status)
+{
+    if ((status == NULL) ||
+        (s_page_viewport_layer == NULL))
+    {
+        return;
+    }
+
+    /*
+     * Cached connection status occupies the top of the screen,
+     * so move cached alert pages below it. Live alert pages use
+     * the normal higher position.
+     */
+    const bool show_connection_status =
+        status->has_received_snapshot &&
+        (status->connection_state ==
+         CONNECTION_STATE_FAILED);
+
+    Layer *const viewport_layer =
+        s_page_viewport_layer;
+
+    GRect frame =
+        layer_get_frame(
+            viewport_layer);
+
+    frame.origin.y =
+        show_connection_status
+            ? 90
+            : PAGE_VIEWPORT_Y;
+
+    layer_set_frame(
+        viewport_layer,
+        frame);
+}
+
+static void prv_refresh(void)
 {
     const ServerStatus *const status =
         server_status_service_get();
@@ -381,40 +535,9 @@ static void prv_refresh_footer(void)
         return;
     }
 
-    const bool connection_lost =
-        status->connection_state ==
-        CONNECTION_STATE_FAILED;
-
-    if (s_updated_age_view != NULL)
-    {
-        Layer *const updated_layer =
-            updated_age_view_get_layer(
-                s_updated_age_view);
-
-        layer_set_hidden(
-            updated_layer,
-            connection_lost ||
-                !status->has_received_snapshot);
-
-        if (!connection_lost &&
-            status->has_received_snapshot)
-        {
-            updated_age_view_refresh(
-                s_updated_age_view);
-        }
-    }
-
-    if (s_connection_status_view != NULL)
-    {
-        connection_status_view_refresh(
-            s_connection_status_view);
-    }
-}
-
-static void prv_refresh(void)
-{
+    prv_update_summary(status);
+    prv_update_page_layout(status);
     prv_refresh_pages();
-    prv_refresh_footer();
 }
 
 static void prv_page_animation_stopped(
@@ -447,10 +570,6 @@ static void prv_page_animation_stopped(
 
     s_is_animating = false;
 
-    /*
-     * Snap to the exact final bounds after animation.
-     * The SDK owns/frees the completed animation.
-     */
     prv_set_viewport_page(
         s_current_page);
 
@@ -464,6 +583,8 @@ static void prv_animate_to_page(
         server_status_service_get();
 
     if ((status == NULL) ||
+        (!status->has_received_snapshot) ||
+        (status->attention_item_count <= 0) ||
         s_is_animating)
     {
         return;
@@ -578,10 +699,6 @@ static void prv_back_click_handler(
     (void)recognizer;
     (void)context;
 
-    /*
-     * Avoid tearing down the viewport while its bounds are
-     * actively being animated. The transition is only 250ms.
-     */
     if (s_is_animating)
     {
         return;
@@ -648,8 +765,57 @@ static void prv_window_load(
             s_title_layer));
 
     /*
-     * The viewport is fixed on screen. Its bounds origin
-     * moves horizontally across the two side-by-side pages.
+     * Top-level status used only for healthy/no-attention
+     * state and connection failure/loss.
+     */
+    s_summary_status_row =
+        status_row_create(
+            GRect(
+                12,
+                STATUS_Y,
+                bounds.size.w - 24,
+                STATUS_HEIGHT),
+            "Connection failed",
+            STATUS_INDICATOR_CRITICAL);
+
+    if (s_summary_status_row != NULL)
+    {
+        status_row_set_emphasized(
+            s_summary_status_row,
+            true);
+
+        layer_add_child(
+            window_layer,
+            status_row_get_layer(
+                s_summary_status_row));
+    }
+
+    s_status_detail_layer =
+        text_layer_create(
+            GRect(
+                32,
+                STATUS_DETAIL_Y,
+                bounds.size.w - 44,
+                STATUS_DETAIL_HEIGHT));
+
+    text_layer_set_font(
+        s_status_detail_layer,
+        fonts_get_system_font(
+            FONT_KEY_GOTHIC_14));
+
+    text_layer_set_text_alignment(
+        s_status_detail_layer,
+        GTextAlignmentLeft);
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(
+            s_status_detail_layer));
+
+    /*
+     * The viewport is fixed on screen during normal live
+     * operation. Its bounds origin moves horizontally across
+     * the two side-by-side pages.
      */
     s_page_viewport_layer =
         layer_create(
@@ -687,69 +853,6 @@ static void prv_window_load(
         }
     }
 
-    s_empty_layer =
-        text_layer_create(
-            GRect(
-                12,
-                68,
-                bounds.size.w - 24,
-                40));
-
-    text_layer_set_text(
-        s_empty_layer,
-        "No attention required");
-
-    text_layer_set_font(
-        s_empty_layer,
-        fonts_get_system_font(
-            FONT_KEY_GOTHIC_18));
-
-    text_layer_set_text_alignment(
-        s_empty_layer,
-        GTextAlignmentCenter);
-
-    layer_add_child(
-        window_layer,
-        text_layer_get_layer(
-            s_empty_layer));
-
-    const int16_t footer_y =
-        bounds.size.h -
-        FOOTER_HEIGHT -
-        FOOTER_BOTTOM_MARGIN;
-
-    s_updated_age_view =
-        updated_age_view_create(
-            GRect(
-                12,
-                footer_y,
-                bounds.size.w - 24,
-                FOOTER_HEIGHT));
-
-    if (s_updated_age_view != NULL)
-    {
-        layer_add_child(
-            window_layer,
-            updated_age_view_get_layer(
-                s_updated_age_view));
-    }
-
-    s_connection_status_view =
-        connection_status_view_create(
-            GRect(
-                12,
-                footer_y,
-                bounds.size.w - 24,
-                FOOTER_HEIGHT));
-
-    if (s_connection_status_view != NULL)
-    {
-        layer_add_child(
-            window_layer,
-            connection_status_view_get_layer(
-                s_connection_status_view));
-    }
-
     s_page_indicator_layer =
         layer_create(
             GRect(
@@ -779,24 +882,22 @@ static void prv_window_unload(
 {
     (void)window;
 
-    /*
-     * Back navigation is ignored during the short page
-     * transition, so there is no live animation referencing
-     * these layers when unload begins.
-     */
     s_is_animating = false;
 
     prv_destroy_all_rows();
 
-    connection_status_view_destroy(
-        s_connection_status_view);
+    status_row_destroy(
+        s_summary_status_row);
 
-    s_connection_status_view = NULL;
+    s_summary_status_row = NULL;
 
-    updated_age_view_destroy(
-        s_updated_age_view);
+    if (s_status_detail_layer != NULL)
+    {
+        text_layer_destroy(
+            s_status_detail_layer);
 
-    s_updated_age_view = NULL;
+        s_status_detail_layer = NULL;
+    }
 
     if (s_page_indicator_layer != NULL)
     {
@@ -804,14 +905,6 @@ static void prv_window_unload(
             s_page_indicator_layer);
 
         s_page_indicator_layer = NULL;
-    }
-
-    if (s_empty_layer != NULL)
-    {
-        text_layer_destroy(
-            s_empty_layer);
-
-        s_empty_layer = NULL;
     }
 
     for (int page = 0;
