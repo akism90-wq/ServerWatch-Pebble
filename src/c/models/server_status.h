@@ -102,6 +102,7 @@ typedef struct
     float tv_gb;
     float immich_gb;
     float downloads_gb;
+    float audiobooks_gb;
     float other_gb;
 
     int active_downloads;

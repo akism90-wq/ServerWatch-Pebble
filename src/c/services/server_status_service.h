@@ -52,6 +52,7 @@ void server_status_service_set_storage(
     int32_t tv_tenths_gb,
     int32_t immich_tenths_gb,
     int32_t downloads_tenths_gb,
+    int32_t audiobooks_tenths_gb,
     int32_t other_tenths_gb
 );
 

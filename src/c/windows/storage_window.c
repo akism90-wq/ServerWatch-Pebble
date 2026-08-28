@@ -9,7 +9,7 @@
 #define STORAGE_PAGE_COUNT 2
 
 #define CAPACITY_METRIC_COUNT 4
-#define BREAKDOWN_METRIC_COUNT 5
+#define BREAKDOWN_METRIC_COUNT 6
 
 #define TITLE_Y 8
 #define TITLE_HEIGHT 30
@@ -28,11 +28,11 @@
 #define CAPACITY_STRIDE 22
 
 #define BREAKDOWN_TITLE_Y 0
-#define BREAKDOWN_TITLE_HEIGHT 28
+#define BREAKDOWN_TITLE_HEIGHT 26
 
-#define BREAKDOWN_START_Y 32
-#define BREAKDOWN_HEIGHT 22
-#define BREAKDOWN_STRIDE 22
+#define BREAKDOWN_START_Y 28
+#define BREAKDOWN_HEIGHT 20
+#define BREAKDOWN_STRIDE 21
 
 #define PAGE_INDICATOR_HEIGHT 20
 #define PAGE_DOT_RADIUS 3
@@ -60,6 +60,7 @@ typedef enum
     BREAKDOWN_TV,
     BREAKDOWN_IMMICH,
     BREAKDOWN_DOWNLOADS,
+    BREAKDOWN_AUDIOBOOKS,
     BREAKDOWN_OTHER
 } BreakdownMetric;
 
@@ -91,6 +92,7 @@ static char s_movies_text[16];
 static char s_tv_text[16];
 static char s_immich_text[16];
 static char s_downloads_text[16];
+static char s_audiobooks_text[16];
 static char s_other_text[16];
 
 static char s_summary_detail_text[48];
@@ -177,6 +179,12 @@ static void prv_format_metric_values(
         sizeof(s_downloads_text),
         "%d GB",
         (int)status->downloads_gb);
+
+    snprintf(
+        s_audiobooks_text,
+        sizeof(s_audiobooks_text),
+        "%d GB",
+        (int)status->audiobooks_gb);
 
     snprintf(
         s_other_text,
@@ -456,6 +464,10 @@ static void prv_update_breakdown(
     metric_row_set_value(
         s_breakdown_rows[BREAKDOWN_DOWNLOADS],
         s_downloads_text);
+
+    metric_row_set_value(
+        s_breakdown_rows[BREAKDOWN_AUDIOBOOKS],
+        s_audiobooks_text);
 
     metric_row_set_value(
         s_breakdown_rows[BREAKDOWN_OTHER],
@@ -985,6 +997,18 @@ static void prv_window_load(
                 bounds.size.w - 24,
                 BREAKDOWN_HEIGHT),
             "Downloads",
+            "");
+
+    s_breakdown_rows[BREAKDOWN_AUDIOBOOKS] =
+        metric_row_create(
+            GRect(
+                12,
+                BREAKDOWN_START_Y +
+                    (BREAKDOWN_AUDIOBOOKS *
+                     BREAKDOWN_STRIDE),
+                bounds.size.w - 24,
+                BREAKDOWN_HEIGHT),
+            "Audiobooks",
             "");
 
     s_breakdown_rows[BREAKDOWN_OTHER] =

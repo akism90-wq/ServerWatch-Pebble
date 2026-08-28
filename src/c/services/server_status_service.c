@@ -36,6 +36,7 @@ static ServerStatus s_status = {
     .tv_gb = 734.0f,
     .immich_gb = 124.0f,
     .downloads_gb = 4.0f,
+    .audiobooks_gb = 0.0f,
     .other_gb = 560.0f,
 
     .active_downloads = 2,
@@ -347,6 +348,7 @@ void server_status_service_set_storage(
     int32_t tv_tenths_gb,
     int32_t immich_tenths_gb,
     int32_t downloads_tenths_gb,
+    int32_t audiobooks_tenths_gb,
     int32_t other_tenths_gb)
 {
     s_status.storage_used_percent =
@@ -375,6 +377,9 @@ void server_status_service_set_storage(
 
     s_status.downloads_gb =
         (float)downloads_tenths_gb / 10.0f;
+
+    s_status.audiobooks_gb =
+        (float)audiobooks_tenths_gb / 10.0f;
 
     s_status.other_gb =
         (float)other_tenths_gb / 10.0f;

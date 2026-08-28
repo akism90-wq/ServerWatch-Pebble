@@ -285,6 +285,14 @@ function buildStatusMessage(status) {
                 ) * 10
             ),
 
+        "audiobooksTenthsGb":
+            Math.round(
+                getStorageCategoryUsedGb(
+                    status.storage.categories,
+                    "Audiobooks"
+                ) * 10
+            ),
+
         "otherTenthsGb":
             Math.round(
                 getStorageCategoryUsedGb(

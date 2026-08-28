@@ -295,6 +295,9 @@ static void prv_inbox_received_handler(
     Tuple *downloads_storage_tuple =
         dict_find(iterator, MESSAGE_KEY_downloadsTenthsGb);
 
+    Tuple *audiobooks_storage_tuple =
+        dict_find(iterator, MESSAGE_KEY_audiobooksTenthsGb);
+
     Tuple *other_tuple =
         dict_find(iterator, MESSAGE_KEY_otherTenthsGb);
 
@@ -307,6 +310,7 @@ static void prv_inbox_received_handler(
     (tv_tuple != NULL) &&
     (immich_storage_tuple != NULL) &&
     (downloads_storage_tuple != NULL) &&
+    (audiobooks_storage_tuple != NULL) &&
     (other_tuple != NULL))
     {
         server_status_service_set_storage(
@@ -319,6 +323,7 @@ static void prv_inbox_received_handler(
             tv_tuple->value->int32,
             immich_storage_tuple->value->int32,
             downloads_storage_tuple->value->int32,
+            audiobooks_storage_tuple->value->int32,
             other_tuple->value->int32);
 
             APP_LOG(
