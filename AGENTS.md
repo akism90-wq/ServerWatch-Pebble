@@ -42,6 +42,20 @@ Do not change or remove existing Agent fields/contracts merely to make Pebble im
 
 Secrets and production credentials must never be committed to Git.
 
+### Related Agent Repository
+
+The ServerWatch Agent source repository is separate from this Pebble repository.
+
+On the ASCOLTARE WSL development machine it is located at:
+
+`~/Documents/serverwatch/ServerWatchAgent`
+
+When investigation requires understanding the Agent payload or API behaviour, the agent may inspect this repository and run local, non-destructive development/build/test commands there.
+
+Do not modify the Agent repository unless the current task genuinely requires an Agent-side change. If an Agent change is required, explain why before modifying it.
+
+The production Agent runs on the separate `grey-area` server. Access to the local Agent source repository does not imply permission to deploy or modify production.
+
 ## Connection and Cached-Data Semantics
 
 Connection state and server health are separate concepts.
@@ -180,6 +194,32 @@ For Pebble destructive actions:
 - refresh immediately after a successful destructive operation
 
 Do not execute real destructive operations as part of automated testing.
+
+## Local Engineering Autonomy
+
+For assigned development tasks, the agent is expected to perform routine local engineering work itself rather than asking the user to act as a command runner.
+
+The agent may autonomously perform local, non-destructive actions needed to diagnose and verify work, including:
+
+- inspect/search repository files
+- run Pebble clean/build commands
+- run local Agent build/test commands
+- run existing non-destructive Makefile diagnostic or test targets
+- start and stop local development processes when needed
+- inspect local processes and ports
+- inspect local logs
+- make local HTTP/API requests against development services
+- use available emulator tooling
+- inspect Git status, diff, log, and history
+- run existing test states and diagnostic tooling
+
+Before running an unfamiliar Makefile target or script, inspect what it does rather than assuming it is safe from its name.
+
+If a local dependency is required for testing, start it directly where practical and clean it up afterwards.
+
+The user should only be required for checks that genuinely need human or physical-device interaction, such as observing behaviour on a real Pebble.
+
+This autonomy does not override the production, destructive-action, secrets, Git push/tag/release, or deployment restrictions elsewhere in this file.
 
 ## Git and Release Safety
 
