@@ -12,7 +12,7 @@ ServerWatch Pebble v1.0.0 targets **Pebble Time 2 (emery)** and **Pebble Round 2
 A dedicated overview for server/service problems, storage warnings, suspicious download warnings, and other alerts. Alerts use severity-aware paged presentation. When everything is healthy, the screen shows the animated sleeping ServerWatch cat.
 
 ### Server
-A two-page live dashboard covering CPU, RAM, temperature, load average, uptime, and monitored service health for Jellyfin, qBittorrent, Sonarr, Radarr, Prowlarr, and Immich.
+A three-page live dashboard covering CPU, RAM, temperature, load average, uptime, and monitored service health for Jellyfin, qBittorrent, Sonarr, Radarr, Prowlarr, Immich, Chaptarr, and Audiobookshelf.
 
 ### Storage
 A two-page dashboard showing used percentage, used/free/total capacity, storage warning state, and category usage for Movies, TV, Immich, Downloads, and Other.

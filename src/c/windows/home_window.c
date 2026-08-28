@@ -67,6 +67,11 @@ static bool prv_all_services_online(
          index < SERVER_SERVICE_COUNT;
          ++index)
     {
+        if (!status->services[index].monitored)
+        {
+            continue;
+        }
+
         if (!status->services[index].online)
         {
             return false;

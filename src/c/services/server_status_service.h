@@ -22,7 +22,11 @@ void server_status_service_set_service_states(
     bool sonarr_online,
     bool radarr_online,
     bool prowlarr_online,
-    bool immich_online
+    bool immich_online,
+    bool chaptarr_online,
+    bool chaptarr_monitored,
+    bool audiobookshelf_online,
+    bool audiobookshelf_monitored
 );
 
 void server_status_service_mark_updated(void);

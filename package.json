@@ -31,6 +31,10 @@
       "radarrOnline",
       "prowlarrOnline",
       "immichOnline",
+      "chaptarrOnline",
+      "chaptarrMonitored",
+      "audiobookshelfOnline",
+      "audiobookshelfMonitored",
 
       "storageUsedPercent",
       "storageWarning",

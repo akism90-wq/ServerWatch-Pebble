@@ -211,12 +211,28 @@ static void prv_inbox_received_handler(
     Tuple *immich_tuple =
         dict_find(iterator, MESSAGE_KEY_immichOnline);
 
+    Tuple *chaptarr_tuple =
+        dict_find(iterator, MESSAGE_KEY_chaptarrOnline);
+
+    Tuple *chaptarr_monitored_tuple =
+        dict_find(iterator, MESSAGE_KEY_chaptarrMonitored);
+
+    Tuple *audiobookshelf_tuple =
+        dict_find(iterator, MESSAGE_KEY_audiobookshelfOnline);
+
+    Tuple *audiobookshelf_monitored_tuple =
+        dict_find(iterator, MESSAGE_KEY_audiobookshelfMonitored);
+
     if ((jellyfin_tuple != NULL) &&
         (qbittorrent_tuple != NULL) &&
         (sonarr_tuple != NULL) &&
         (radarr_tuple != NULL) &&
         (prowlarr_tuple != NULL) &&
-        (immich_tuple != NULL))
+        (immich_tuple != NULL) &&
+        (chaptarr_tuple != NULL) &&
+        (chaptarr_monitored_tuple != NULL) &&
+        (audiobookshelf_tuple != NULL) &&
+        (audiobookshelf_monitored_tuple != NULL))
     {
         server_status_service_set_service_states(
             jellyfin_tuple->value->int32 != 0,
@@ -224,7 +240,11 @@ static void prv_inbox_received_handler(
             sonarr_tuple->value->int32 != 0,
             radarr_tuple->value->int32 != 0,
             prowlarr_tuple->value->int32 != 0,
-            immich_tuple->value->int32 != 0);
+            immich_tuple->value->int32 != 0,
+            chaptarr_tuple->value->int32 != 0,
+            chaptarr_monitored_tuple->value->int32 != 0,
+            audiobookshelf_tuple->value->int32 != 0,
+            audiobookshelf_monitored_tuple->value->int32 != 0);
 
         APP_LOG(
             APP_LOG_LEVEL_INFO,

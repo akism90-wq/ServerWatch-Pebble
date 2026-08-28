@@ -15,6 +15,16 @@ function isServiceUp(services, name) {
     return 0;
 }
 
+function isServiceMonitored(services, name) {
+    for (var i = 0; i < services.length; i++) {
+        if (services[i].name === name) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
 function getStorageCategoryUsedGb(categories, name) {
     for (var i = 0; i < categories.length; i++) {
         if (categories[i].name === name) {
@@ -206,6 +216,18 @@ function buildStatusMessage(status) {
 
         "immichOnline":
             isServiceUp(status.services, "Immich"),
+
+        "chaptarrOnline":
+            isServiceUp(status.services, "Chaptarr"),
+
+        "chaptarrMonitored":
+            isServiceMonitored(status.services, "Chaptarr"),
+
+        "audiobookshelfOnline":
+            isServiceUp(status.services, "Audiobookshelf"),
+
+        "audiobookshelfMonitored":
+            isServiceMonitored(status.services, "Audiobookshelf"),
 
         "storageUsedPercent":
             status.storage.usedPercent,

@@ -6,8 +6,10 @@
 #include "../ui/metric_row.h"
 #include "../ui/status_row.h"
 
-#define SERVER_PAGE_COUNT 2
+#define SERVER_PAGE_COUNT 3
 #define SERVER_METRIC_COUNT 5
+#define SERVER_SERVICES_PER_PAGE 4
+#define SERVER_SERVICE_PAGE_COUNT 2
 
 #define TITLE_Y 8
 #define TITLE_HEIGHT 30
@@ -34,14 +36,15 @@
 
 #define PAGE_INDICATOR_HEIGHT 20
 #define PAGE_DOT_RADIUS 3
-#define PAGE_DOT_SPACING 8
+#define PAGE_DOT_SPACING 16
 
 #define PAGE_ANIMATION_DURATION_MS 250
 
 typedef enum
 {
     SERVER_PAGE_METRICS = 0,
-    SERVER_PAGE_SERVICES
+    SERVER_PAGE_SERVICES_FIRST,
+    SERVER_PAGE_SERVICES_SECOND
 } ServerPage;
 
 typedef enum
@@ -60,7 +63,8 @@ static Layer *s_diagnostic_layer;
 
 static TextLayer *s_title_layer;
 static TextLayer *s_summary_detail_layer;
-static TextLayer *s_services_title_layer;
+static TextLayer *s_services_title_layers
+    [SERVER_SERVICE_PAGE_COUNT];
 
 static StatusRow *s_server_status_row;
 static StatusRow *s_service_rows[SERVER_SERVICE_COUNT];
@@ -158,6 +162,11 @@ static int prv_get_offline_service_count(
          index < SERVER_SERVICE_COUNT;
          ++index)
     {
+        if (!status->services[index].monitored)
+        {
+            continue;
+        }
+
         if (!status->services[index].online)
         {
             ++offline_count;
@@ -179,6 +188,11 @@ static const char *prv_get_first_offline_service(
          index < SERVER_SERVICE_COUNT;
          ++index)
     {
+        if (!status->services[index].monitored)
+        {
+            continue;
+        }
+
         if (!status->services[index].online)
         {
             return status->services[index].name;
@@ -226,15 +240,18 @@ static void prv_page_indicator_update_proc(
         context,
         GColorBlack);
 
+    const int16_t first_dot_x =
+        centre_x -
+        (((SERVER_PAGE_COUNT - 1) *
+          PAGE_DOT_SPACING) / 2);
+
     for (int page = 0;
          page < SERVER_PAGE_COUNT;
          ++page)
     {
         const int16_t x =
-            centre_x +
-            ((page == SERVER_PAGE_METRICS)
-                 ? -PAGE_DOT_SPACING
-                 : PAGE_DOT_SPACING);
+            first_dot_x +
+            (page * PAGE_DOT_SPACING);
 
         if (page == s_current_page)
         {
@@ -475,6 +492,16 @@ static void prv_update_services(
          index < SERVER_SERVICE_COUNT;
          ++index)
     {
+        if (s_service_rows[index] == NULL)
+        {
+            continue;
+        }
+
+        layer_set_hidden(
+            status_row_get_layer(
+                s_service_rows[index]),
+            !status->services[index].monitored);
+
         status_row_set_state(
             s_service_rows[index],
             prv_state_from_online(
@@ -523,7 +550,11 @@ static void prv_update_visibility(
         !has_snapshot);
 
     layer_set_hidden(
-        s_page_layers[SERVER_PAGE_SERVICES],
+        s_page_layers[SERVER_PAGE_SERVICES_FIRST],
+        !has_snapshot);
+
+    layer_set_hidden(
+        s_page_layers[SERVER_PAGE_SERVICES_SECOND],
         !has_snapshot);
 
     if (!has_snapshot)
@@ -945,33 +976,49 @@ static void prv_window_load(
     }
 
     /*
-     * Page 2 — monitored service state.
+     * Pages 2 and 3 — monitored service state.
      */
-    s_services_title_layer =
-        text_layer_create(
-            GRect(
-                0,
-                SERVICES_TITLE_Y,
-                bounds.size.w,
-                SERVICES_TITLE_HEIGHT));
+    for (int service_page = 0;
+         service_page < SERVER_SERVICE_PAGE_COUNT;
+         ++service_page)
+    {
+        const int page =
+            SERVER_PAGE_SERVICES_FIRST +
+            service_page;
 
-    text_layer_set_text(
-        s_services_title_layer,
-        "Service Status");
+        s_services_title_layers[service_page] =
+            text_layer_create(
+                GRect(
+                    0,
+                    SERVICES_TITLE_Y,
+                    bounds.size.w,
+                    SERVICES_TITLE_HEIGHT));
 
-    text_layer_set_font(
-        s_services_title_layer,
-        fonts_get_system_font(
-            FONT_KEY_GOTHIC_18_BOLD));
+        if (s_services_title_layers[service_page] !=
+            NULL)
+        {
+            text_layer_set_text(
+                s_services_title_layers[service_page],
+                service_page == 0
+                    ? "Services 1/2"
+                    : "Services 2/2");
 
-    text_layer_set_text_alignment(
-        s_services_title_layer,
-        GTextAlignmentCenter);
+            text_layer_set_font(
+                s_services_title_layers[service_page],
+                fonts_get_system_font(
+                    FONT_KEY_GOTHIC_18_BOLD));
 
-    layer_add_child(
-        s_page_layers[SERVER_PAGE_SERVICES],
-        text_layer_get_layer(
-            s_services_title_layer));
+            text_layer_set_text_alignment(
+                s_services_title_layers[service_page],
+                GTextAlignmentCenter);
+
+            layer_add_child(
+                s_page_layers[page],
+                text_layer_get_layer(
+                    s_services_title_layers
+                        [service_page]));
+        }
+    }
 
     const ServerStatus *const status =
         server_status_service_get();
@@ -980,12 +1027,22 @@ static void prv_window_load(
          index < SERVER_SERVICE_COUNT;
          ++index)
     {
+        const int service_page =
+            index / SERVER_SERVICES_PER_PAGE;
+
+        const int service_row =
+            index % SERVER_SERVICES_PER_PAGE;
+
+        const int page =
+            SERVER_PAGE_SERVICES_FIRST +
+            service_page;
+
         s_service_rows[index] =
             status_row_create(
                 GRect(
                     12,
                     SERVICE_START_Y +
-                        (index *
+                        (service_row *
                          SERVICE_STRIDE),
                     bounds.size.w - 24,
                     SERVICE_HEIGHT),
@@ -996,7 +1053,7 @@ static void prv_window_load(
         if (s_service_rows[index] != NULL)
         {
             layer_add_child(
-                s_page_layers[SERVER_PAGE_SERVICES],
+                s_page_layers[page],
                 status_row_get_layer(
                     s_service_rows[index]));
         }
@@ -1083,12 +1140,20 @@ static void prv_window_unload(
         s_service_rows[index] = NULL;
     }
 
-    if (s_services_title_layer != NULL)
+    for (int service_page = 0;
+         service_page < SERVER_SERVICE_PAGE_COUNT;
+         ++service_page)
     {
-        text_layer_destroy(
-            s_services_title_layer);
+        if (s_services_title_layers[service_page] !=
+            NULL)
+        {
+            text_layer_destroy(
+                s_services_title_layers
+                    [service_page]);
 
-        s_services_title_layer = NULL;
+            s_services_title_layers[service_page] =
+                NULL;
+        }
     }
 
     for (int index = 0;

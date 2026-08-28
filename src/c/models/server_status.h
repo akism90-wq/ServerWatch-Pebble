@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#define SERVER_SERVICE_COUNT 6
+#define SERVER_SERVICE_COUNT 8
 #define SERVER_DOWNLOAD_COUNT 3
 #define SERVER_ATTENTION_ITEM_COUNT 8
 #define SERVER_NAME_LENGTH 32
@@ -60,6 +60,7 @@ typedef struct
 {
     char name[SERVICE_NAME_LENGTH];
     bool online;
+    bool monitored;
 } ServiceStatus;
 
 typedef enum

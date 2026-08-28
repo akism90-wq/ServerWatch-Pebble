@@ -73,12 +73,14 @@ static ServerStatus s_status = {
     },
 
     .services = {
-        { "Jellyfin",    true },
-        { "qBittorrent", false },
-        { "Sonarr",      true },
-        { "Radarr",      true },
-        { "Prowlarr",    true },
-        { "Immich",      true },
+        { "Jellyfin",       true,  true },
+        { "qBittorrent",    false, true },
+        { "Sonarr",         true,  true },
+        { "Radarr",         true,  true },
+        { "Prowlarr",       true,  true },
+        { "Immich",         true,  true },
+        { "Chaptarr",       true,  false },
+        { "Audiobookshelf", true,  false },
     },
 };
 
@@ -181,7 +183,11 @@ void server_status_service_set_service_states(
     bool sonarr_online,
     bool radarr_online,
     bool prowlarr_online,
-    bool immich_online)
+    bool immich_online,
+    bool chaptarr_online,
+    bool chaptarr_monitored,
+    bool audiobookshelf_online,
+    bool audiobookshelf_monitored)
 {
     s_status.services[0].online = jellyfin_online;
     s_status.services[1].online = qbittorrent_online;
@@ -189,6 +195,10 @@ void server_status_service_set_service_states(
     s_status.services[3].online = radarr_online;
     s_status.services[4].online = prowlarr_online;
     s_status.services[5].online = immich_online;
+    s_status.services[6].online = chaptarr_online;
+    s_status.services[6].monitored = chaptarr_monitored;
+    s_status.services[7].online = audiobookshelf_online;
+    s_status.services[7].monitored = audiobookshelf_monitored;
 }
 
 void server_status_service_mark_updated(void)
