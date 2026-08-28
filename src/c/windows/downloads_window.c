@@ -1,6 +1,7 @@
 #include "downloads_window.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include "../services/server_status_service.h"
 #include "../ui/download_card.h"
@@ -17,6 +18,7 @@
 
 #define DOWNLOAD_CARD_COUNT SERVER_DOWNLOAD_COUNT
 #define DOWNLOADS_CONTENT_HEIGHT 612
+#define DOWNLOAD_FEEDBACK_DISMISS_MS 1800
 
 static ScrollLayer *s_scroll_layer;
 static TextLayer *s_title_layer;
@@ -28,14 +30,109 @@ static ConnectionStatusView *s_connection_status_view;
 static DownloadCard *s_download_cards[DOWNLOAD_CARD_COUNT];
 
 static char s_overflow_text[32];
+static char s_pending_delete_hash[DOWNLOAD_HASH_LENGTH];
+static char s_pending_delete_name[DOWNLOAD_NAME_LENGTH];
+static char s_feedback_title_text[32];
+static char s_feedback_body_text[96];
 
 static int s_selected_download_index =
     DOWNLOAD_SELECTION_NONE;
 
 static bool s_footer_visible;
+static bool s_delete_request_pending;
+
+static Window *s_confirm_window;
+static TextLayer *s_confirm_title_layer;
+static TextLayer *s_confirm_name_layer;
+static TextLayer *s_confirm_warning_layer;
+static TextLayer *s_confirm_actions_layer;
+
+static Window *s_feedback_window;
+static TextLayer *s_feedback_title_layer;
+static TextLayer *s_feedback_body_layer;
+static AppTimer *s_feedback_timer;
 
 static void prv_update_selection(int visible_downloads);
 static void prv_scroll_to_selected(void);
+static void prv_show_feedback(
+    const char *title,
+    const char *body);
+
+static int prv_visible_download_count(
+    const ServerStatus *status)
+{
+    if (status == NULL)
+    {
+        return 0;
+    }
+
+    return status->active_downloads < SERVER_DOWNLOAD_COUNT
+        ? status->active_downloads
+        : SERVER_DOWNLOAD_COUNT;
+}
+
+static bool prv_is_live_snapshot(
+    const ServerStatus *status)
+{
+    return (status != NULL) &&
+        status->has_received_snapshot &&
+        (status->connection_state ==
+         CONNECTION_STATE_CONNECTED);
+}
+
+static bool prv_hash_is_visible(
+    const ServerStatus *status,
+    const char *hash)
+{
+    if ((status == NULL) ||
+        (hash == NULL) ||
+        (hash[0] == '\0'))
+    {
+        return false;
+    }
+
+    const int visible_downloads =
+        prv_visible_download_count(status);
+
+    for (int index = 0;
+         index < visible_downloads;
+         ++index)
+    {
+        if (strncmp(
+                status->downloads[index].hash,
+                hash,
+                DOWNLOAD_HASH_LENGTH) == 0)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool prv_can_delete_selected(
+    const ServerStatus *status)
+{
+    if (!prv_is_live_snapshot(status))
+    {
+        return false;
+    }
+
+    const int visible_downloads =
+        prv_visible_download_count(status);
+
+    return (s_selected_download_index >= 0) &&
+        (s_selected_download_index < visible_downloads) &&
+        (status->downloads[
+            s_selected_download_index].hash[0] != '\0');
+}
+
+static void prv_clear_pending_delete(void)
+{
+    s_delete_request_pending = false;
+    s_pending_delete_hash[0] = '\0';
+    s_pending_delete_name[0] = '\0';
+}
 
 static void prv_up_click_handler(
     ClickRecognizerRef recognizer,
@@ -144,6 +241,442 @@ static void prv_down_click_handler(
         true);
 }
 
+static void prv_feedback_timer_callback(void *context)
+{
+    (void)context;
+
+    s_feedback_timer = NULL;
+
+    if (s_feedback_window != NULL)
+    {
+        window_stack_remove(
+            s_feedback_window,
+            true);
+    }
+}
+
+static void prv_feedback_dismiss_handler(
+    ClickRecognizerRef recognizer,
+    void *context)
+{
+    (void)recognizer;
+    (void)context;
+
+    if (s_feedback_window != NULL)
+    {
+        window_stack_remove(
+            s_feedback_window,
+            true);
+    }
+}
+
+static void prv_feedback_click_config_provider(
+    void *context)
+{
+    (void)context;
+
+    window_single_click_subscribe(
+        BUTTON_ID_SELECT,
+        prv_feedback_dismiss_handler);
+
+    window_single_click_subscribe(
+        BUTTON_ID_BACK,
+        prv_feedback_dismiss_handler);
+}
+
+static void prv_feedback_window_load(Window *window)
+{
+    Layer *const window_layer =
+        window_get_root_layer(window);
+
+    const GRect bounds =
+        layer_get_bounds(window_layer);
+
+    s_feedback_title_layer =
+        text_layer_create(
+            GRect(8, 22, bounds.size.w - 16, 32));
+
+    text_layer_set_text(
+        s_feedback_title_layer,
+        s_feedback_title_text);
+
+    text_layer_set_font(
+        s_feedback_title_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+
+    text_layer_set_text_alignment(
+        s_feedback_title_layer,
+        GTextAlignmentCenter);
+
+    s_feedback_body_layer =
+        text_layer_create(
+            GRect(10, 64, bounds.size.w - 20, 82));
+
+    text_layer_set_text(
+        s_feedback_body_layer,
+        s_feedback_body_text);
+
+    text_layer_set_font(
+        s_feedback_body_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18));
+
+    text_layer_set_text_alignment(
+        s_feedback_body_layer,
+        GTextAlignmentCenter);
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(s_feedback_title_layer));
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(s_feedback_body_layer));
+
+    s_feedback_timer =
+        app_timer_register(
+            DOWNLOAD_FEEDBACK_DISMISS_MS,
+            prv_feedback_timer_callback,
+            NULL);
+}
+
+static void prv_feedback_window_unload(Window *window)
+{
+    (void)window;
+
+    if (s_feedback_timer != NULL)
+    {
+        app_timer_cancel(s_feedback_timer);
+        s_feedback_timer = NULL;
+    }
+
+    text_layer_destroy(s_feedback_body_layer);
+    s_feedback_body_layer = NULL;
+
+    text_layer_destroy(s_feedback_title_layer);
+    s_feedback_title_layer = NULL;
+
+    window_destroy(s_feedback_window);
+    s_feedback_window = NULL;
+}
+
+static void prv_show_feedback(
+    const char *title,
+    const char *body)
+{
+    if (s_feedback_window != NULL)
+    {
+        window_stack_remove(
+            s_feedback_window,
+            false);
+    }
+
+    snprintf(
+        s_feedback_title_text,
+        sizeof(s_feedback_title_text),
+        "%s",
+        title != NULL ? title : "");
+
+    snprintf(
+        s_feedback_body_text,
+        sizeof(s_feedback_body_text),
+        "%s",
+        body != NULL ? body : "");
+
+    s_feedback_window = window_create();
+
+    if (s_feedback_window == NULL)
+    {
+        return;
+    }
+
+    window_set_window_handlers(
+        s_feedback_window,
+        (WindowHandlers) {
+            .load = prv_feedback_window_load,
+            .unload = prv_feedback_window_unload,
+        });
+
+    window_set_click_config_provider(
+        s_feedback_window,
+        prv_feedback_click_config_provider);
+
+    window_stack_push(
+        s_feedback_window,
+        true);
+}
+
+static void prv_send_delete_request(void)
+{
+    DictionaryIterator *iterator = NULL;
+
+    const AppMessageResult result =
+        app_message_outbox_begin(&iterator);
+
+    if ((result != APP_MSG_OK) ||
+        (iterator == NULL))
+    {
+        prv_show_feedback(
+            "Delete failed",
+            "Could not contact phone.");
+        prv_clear_pending_delete();
+        return;
+    }
+
+    dict_write_cstring(
+        iterator,
+        MESSAGE_KEY_deleteDownloadHash,
+        s_pending_delete_hash);
+
+    s_delete_request_pending = true;
+
+    const AppMessageResult send_result =
+        app_message_outbox_send();
+
+    if (send_result != APP_MSG_OK)
+    {
+        prv_show_feedback(
+            "Delete failed",
+            "Could not send request.");
+        prv_clear_pending_delete();
+        return;
+    }
+
+    prv_show_feedback(
+        "Deleting",
+        "Waiting for ServerWatch.");
+}
+
+static void prv_confirm_select_handler(
+    ClickRecognizerRef recognizer,
+    void *context)
+{
+    (void)recognizer;
+    (void)context;
+
+    const ServerStatus *const status =
+        server_status_service_get();
+
+    if (!prv_is_live_snapshot(status))
+    {
+        window_stack_pop(true);
+        prv_show_feedback(
+            "Delete blocked",
+            "Connection is not live.");
+        prv_clear_pending_delete();
+        return;
+    }
+
+    if (!prv_hash_is_visible(
+            status,
+            s_pending_delete_hash))
+    {
+        window_stack_pop(true);
+        prv_show_feedback(
+            "Delete blocked",
+            "Download changed.");
+        prv_clear_pending_delete();
+        return;
+    }
+
+    window_stack_pop(true);
+    prv_send_delete_request();
+}
+
+static void prv_confirm_cancel_handler(
+    ClickRecognizerRef recognizer,
+    void *context)
+{
+    (void)recognizer;
+    (void)context;
+
+    prv_clear_pending_delete();
+    window_stack_pop(true);
+}
+
+static void prv_confirm_click_config_provider(void *context)
+{
+    (void)context;
+
+    window_single_click_subscribe(
+        BUTTON_ID_SELECT,
+        prv_confirm_select_handler);
+
+    window_single_click_subscribe(
+        BUTTON_ID_BACK,
+        prv_confirm_cancel_handler);
+
+    window_single_click_subscribe(
+        BUTTON_ID_DOWN,
+        prv_confirm_cancel_handler);
+}
+
+static void prv_confirm_window_load(Window *window)
+{
+    Layer *const window_layer =
+        window_get_root_layer(window);
+
+    const GRect bounds =
+        layer_get_bounds(window_layer);
+
+    s_confirm_title_layer =
+        text_layer_create(
+            GRect(6, 8, bounds.size.w - 12, 30));
+
+    text_layer_set_text(
+        s_confirm_title_layer,
+        "Kill Download?");
+
+    text_layer_set_font(
+        s_confirm_title_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD));
+
+    text_layer_set_text_alignment(
+        s_confirm_title_layer,
+        GTextAlignmentCenter);
+
+    s_confirm_name_layer =
+        text_layer_create(
+            GRect(10, 42, bounds.size.w - 20, 48));
+
+    text_layer_set_text(
+        s_confirm_name_layer,
+        s_pending_delete_name);
+
+    text_layer_set_font(
+        s_confirm_name_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+
+    text_layer_set_text_alignment(
+        s_confirm_name_layer,
+        GTextAlignmentCenter);
+
+    s_confirm_warning_layer =
+        text_layer_create(
+            GRect(10, 92, bounds.size.w - 20, 44));
+
+    text_layer_set_text(
+        s_confirm_warning_layer,
+        "Deletes torrent AND downloaded data.");
+
+    text_layer_set_font(
+        s_confirm_warning_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18));
+
+    text_layer_set_text_alignment(
+        s_confirm_warning_layer,
+        GTextAlignmentCenter);
+
+    s_confirm_actions_layer =
+        text_layer_create(
+            GRect(10, 142, bounds.size.w - 20, 28));
+
+    text_layer_set_text(
+        s_confirm_actions_layer,
+        "SELECT Confirm   BACK Cancel");
+
+    text_layer_set_font(
+        s_confirm_actions_layer,
+        fonts_get_system_font(FONT_KEY_GOTHIC_14));
+
+    text_layer_set_text_alignment(
+        s_confirm_actions_layer,
+        GTextAlignmentCenter);
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(s_confirm_title_layer));
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(s_confirm_name_layer));
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(s_confirm_warning_layer));
+
+    layer_add_child(
+        window_layer,
+        text_layer_get_layer(s_confirm_actions_layer));
+}
+
+static void prv_confirm_window_unload(Window *window)
+{
+    (void)window;
+
+    text_layer_destroy(s_confirm_actions_layer);
+    s_confirm_actions_layer = NULL;
+
+    text_layer_destroy(s_confirm_warning_layer);
+    s_confirm_warning_layer = NULL;
+
+    text_layer_destroy(s_confirm_name_layer);
+    s_confirm_name_layer = NULL;
+
+    text_layer_destroy(s_confirm_title_layer);
+    s_confirm_title_layer = NULL;
+
+    window_destroy(s_confirm_window);
+    s_confirm_window = NULL;
+}
+
+static void prv_select_click_handler(
+    ClickRecognizerRef recognizer,
+    void *context)
+{
+    (void)recognizer;
+    (void)context;
+
+    const ServerStatus *const status =
+        server_status_service_get();
+
+    if (!prv_can_delete_selected(status))
+    {
+        prv_show_feedback(
+            "Delete blocked",
+            "Live download required.");
+        prv_clear_pending_delete();
+        return;
+    }
+
+    const DownloadStatus *const download =
+        &status->downloads[s_selected_download_index];
+
+    snprintf(
+        s_pending_delete_hash,
+        sizeof(s_pending_delete_hash),
+        "%s",
+        download->hash);
+
+    snprintf(
+        s_pending_delete_name,
+        sizeof(s_pending_delete_name),
+        "%s",
+        download->name);
+
+    s_confirm_window = window_create();
+
+    if (s_confirm_window == NULL)
+    {
+        prv_clear_pending_delete();
+        return;
+    }
+
+    window_set_window_handlers(
+        s_confirm_window,
+        (WindowHandlers) {
+            .load = prv_confirm_window_load,
+            .unload = prv_confirm_window_unload,
+        });
+
+    window_set_click_config_provider(
+        s_confirm_window,
+        prv_confirm_click_config_provider);
+
+    window_stack_push(
+        s_confirm_window,
+        true);
+}
+
 static void prv_click_config_provider(void *context)
 {
     (void)context;
@@ -155,6 +688,10 @@ static void prv_click_config_provider(void *context)
     window_single_click_subscribe(
         BUTTON_ID_DOWN,
         prv_down_click_handler);
+
+    window_single_click_subscribe(
+        BUTTON_ID_SELECT,
+        prv_select_click_handler);
 }
 
 static void prv_window_load(Window *window)
@@ -855,5 +1392,33 @@ void downloads_window_destroy(Window *window)
 {
     if (window != NULL) {
         window_destroy(window);
+    }
+}
+
+void downloads_window_handle_delete_result(
+    bool success,
+    const char *error_message)
+{
+    if (!s_delete_request_pending)
+    {
+        return;
+    }
+
+    prv_clear_pending_delete();
+
+    if (success)
+    {
+        prv_show_feedback(
+            "Delete sent",
+            "Refreshing downloads.");
+    }
+    else
+    {
+        prv_show_feedback(
+            "Delete failed",
+            (error_message != NULL) &&
+                (error_message[0] != '\0')
+                    ? error_message
+                    : "ServerWatch kept the current data.");
     }
 }

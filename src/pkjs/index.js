@@ -4,6 +4,15 @@ var config = require("./config.local");
 
 var requestInFlight = false;
 var requestSequence = 0;
+var refreshQueued = false;
+var deleteInFlight = false;
+
+function getDeleteUrl() {
+    return config.agentUrl.replace(
+        /\/status\/?$/,
+        "/downloads/delete"
+    );
+}
 
 function isServiceUp(services, name) {
     for (var i = 0; i < services.length; i++) {
@@ -373,11 +382,20 @@ function buildStatusMessage(status) {
         "download0Name":
             download0 ? download0.title : "",
 
+        "download0Hash":
+            download0 ? download0.hash : "",
+
         "download1Name":
             download1 ? download1.title : "",
 
+        "download1Hash":
+            download1 ? download1.hash : "",
+
         "download2Name":
             download2 ? download2.title : "",
+
+        "download2Hash":
+            download2 ? download2.hash : "",
 
         "download0Subtitle":
             download0
@@ -554,6 +572,144 @@ function sendConnectionState(state) {
     );
 }
 
+function fetchQueuedServerStatus() {
+    if (!refreshQueued || requestInFlight) {
+        return;
+    }
+
+    refreshQueued = false;
+    fetchServerStatus("queued refresh");
+}
+
+function sendDeleteResult(success, errorMessage) {
+    Pebble.sendAppMessage(
+        {
+            "deleteResult": success ? 1 : 2,
+            "deleteError": errorMessage || ""
+        },
+        function () {
+            console.log(
+                "Delete result sent: " +
+                (success ? "success" : "failure")
+            );
+        },
+        function (error) {
+            console.log(
+                "Delete result failed: " +
+                JSON.stringify(error)
+            );
+        }
+    );
+}
+
+function deleteDownload(hash) {
+    if (!hash) {
+        sendDeleteResult(false, "Missing torrent hash");
+        return;
+    }
+
+    if (deleteInFlight) {
+        sendDeleteResult(false, "Delete already running");
+        return;
+    }
+
+    deleteInFlight = true;
+
+    var request = new XMLHttpRequest();
+    var requestFinished = false;
+
+    request.open(
+        "POST",
+        getDeleteUrl(),
+        true
+    );
+
+    request.setRequestHeader(
+        "Content-Type",
+        "application/json"
+    );
+
+    request.setRequestHeader(
+        "X-ServerWatch-Api-Key",
+        config.apiKey
+    );
+
+    var watchdog = setTimeout(function () {
+        if (requestFinished) {
+            return;
+        }
+
+        requestFinished = true;
+        deleteInFlight = false;
+
+        console.log(
+            "ServerWatch delete watchdog expired"
+        );
+
+        sendDeleteResult(false, "Delete timed out");
+
+        try {
+            request.abort();
+        } catch (error) {
+            console.log(
+                "ServerWatch delete abort failed: " +
+                error
+            );
+        }
+    }, 4000);
+
+    request.onload = function () {
+        if (requestFinished) {
+            return;
+        }
+
+        requestFinished = true;
+        deleteInFlight = false;
+        clearTimeout(watchdog);
+
+        console.log(
+            "ServerWatch delete response: " +
+            request.status
+        );
+
+        if (request.status < 200 ||
+            request.status >= 300) {
+            sendDeleteResult(
+                false,
+                "Delete failed"
+            );
+            return;
+        }
+
+        sendDeleteResult(true, "");
+        fetchServerStatus("delete success");
+    };
+
+    request.onerror = function () {
+        if (requestFinished) {
+            return;
+        }
+
+        requestFinished = true;
+        deleteInFlight = false;
+        clearTimeout(watchdog);
+
+        console.log(
+            "ServerWatch delete request failed"
+        );
+
+        sendDeleteResult(false, "Delete failed");
+    };
+
+    request.send(
+        JSON.stringify(
+            {
+                hash: hash
+            }
+        )
+    );
+}
+
 function fetchServerStatus(reason) {
     if (requestInFlight) {
         console.log(
@@ -561,6 +717,7 @@ function fetchServerStatus(reason) {
             reason
         );
 
+        refreshQueued = true;
         return;
     }
 
@@ -615,6 +772,8 @@ function fetchServerStatus(reason) {
                 error
             );
         }
+
+        fetchQueuedServerStatus();
     }, 4000);
 
     request.onload = function () {
@@ -640,6 +799,7 @@ function fetchServerStatus(reason) {
             );
 
             sendConnectionState(2);
+            fetchQueuedServerStatus();
             return;
         }
 
@@ -653,6 +813,7 @@ function fetchServerStatus(reason) {
             );
 
             sendStatusToPebble(status);
+            fetchQueuedServerStatus();
         } catch (error) {
             console.log(
                 "ServerWatch JSON parse failed: " +
@@ -660,6 +821,7 @@ function fetchServerStatus(reason) {
             );
 
             sendConnectionState(2);
+            fetchQueuedServerStatus();
         }
     };
 
@@ -678,6 +840,7 @@ function fetchServerStatus(reason) {
         );
 
         sendConnectionState(2);
+        fetchQueuedServerStatus();
     };
 
     request.send();
@@ -704,6 +867,16 @@ Pebble.addEventListener(
             );
 
             fetchServerStatus("watch refresh");
+        }
+
+        if (event.payload.deleteDownloadHash) {
+            console.log(
+                "ServerWatch delete requested by watch"
+            );
+
+            deleteDownload(
+                event.payload.deleteDownloadHash
+            );
         }
     }
 );

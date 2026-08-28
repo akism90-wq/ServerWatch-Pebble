@@ -445,6 +445,7 @@ void server_status_service_set_attention_item(
 void server_status_service_set_download(
     int index,
     const char *name,
+    const char *hash,
     const char *subtitle,
     const char *quality,
     const char *state,
@@ -468,6 +469,12 @@ void server_status_service_set_download(
         sizeof(download->name),
         "%s",
         name != NULL ? name : "");
+
+    snprintf(
+        download->hash,
+        sizeof(download->hash),
+        "%s",
+        hash != NULL ? hash : "");
 
     snprintf(
         download->subtitle,

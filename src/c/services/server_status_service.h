@@ -58,6 +58,7 @@ void server_status_service_set_storage(
 void server_status_service_set_download(
     int index,
     const char *name,
+    const char *hash,
     const char *subtitle,
     const char *quality,
     const char *state,

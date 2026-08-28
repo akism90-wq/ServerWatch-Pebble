@@ -99,6 +99,23 @@ static void prv_inbox_received_handler(
             MESSAGE_KEY_connectionState
         );
 
+    Tuple *delete_result_tuple =
+        dict_find(iterator, MESSAGE_KEY_deleteResult);
+
+    if (delete_result_tuple != NULL)
+    {
+        Tuple *delete_error_tuple =
+            dict_find(iterator, MESSAGE_KEY_deleteError);
+
+        downloads_window_handle_delete_result(
+            delete_result_tuple->value->int32 == 1,
+            delete_error_tuple != NULL
+                ? delete_error_tuple->value->cstring
+                : "");
+
+        return;
+    }
+
     if (connection_state_tuple != NULL)
     {
         const int32_t state_value =
@@ -372,6 +389,9 @@ static void prv_inbox_received_handler(
     Tuple *download0_name_tuple =
         dict_find(iterator, MESSAGE_KEY_download0Name);
 
+    Tuple *download0_hash_tuple =
+        dict_find(iterator, MESSAGE_KEY_download0Hash);
+
     Tuple *download0_subtitle_tuple =
         dict_find(iterator, MESSAGE_KEY_download0Subtitle);
 
@@ -399,6 +419,9 @@ static void prv_inbox_received_handler(
     Tuple *download1_name_tuple =
         dict_find(iterator, MESSAGE_KEY_download1Name);
 
+    Tuple *download1_hash_tuple =
+        dict_find(iterator, MESSAGE_KEY_download1Hash);
+
     Tuple *download1_subtitle_tuple =
         dict_find(iterator, MESSAGE_KEY_download1Subtitle);
 
@@ -425,6 +448,9 @@ static void prv_inbox_received_handler(
 
     Tuple *download2_name_tuple =
         dict_find(iterator, MESSAGE_KEY_download2Name);
+
+    Tuple *download2_hash_tuple =
+        dict_find(iterator, MESSAGE_KEY_download2Hash);
 
     Tuple *download2_subtitle_tuple =
         dict_find(iterator, MESSAGE_KEY_download2Subtitle);
@@ -457,6 +483,7 @@ static void prv_inbox_received_handler(
     }
 
     if ((download0_name_tuple != NULL) &&
+        (download0_hash_tuple != NULL) &&
         (download0_subtitle_tuple != NULL) &&
         (download0_quality_tuple != NULL) &&
         (download0_state_tuple != NULL) &&
@@ -469,6 +496,7 @@ static void prv_inbox_received_handler(
         server_status_service_set_download(
             0,
             download0_name_tuple->value->cstring,
+            download0_hash_tuple->value->cstring,
             download0_subtitle_tuple->value->cstring,
             download0_quality_tuple->value->cstring,
             download0_state_tuple->value->cstring,
@@ -484,6 +512,7 @@ static void prv_inbox_received_handler(
     }
     
     if ((download1_name_tuple != NULL) &&
+        (download1_hash_tuple != NULL) &&
         (download1_subtitle_tuple != NULL) &&
         (download1_quality_tuple != NULL) &&
         (download1_state_tuple != NULL) &&
@@ -496,6 +525,7 @@ static void prv_inbox_received_handler(
         server_status_service_set_download(
             1,
             download1_name_tuple->value->cstring,
+            download1_hash_tuple->value->cstring,
             download1_subtitle_tuple->value->cstring,
             download1_quality_tuple->value->cstring,
             download1_state_tuple->value->cstring,
@@ -511,6 +541,7 @@ static void prv_inbox_received_handler(
     }
 
     if ((download2_name_tuple != NULL) &&
+        (download2_hash_tuple != NULL) &&
         (download2_subtitle_tuple != NULL) &&
         (download2_quality_tuple != NULL) &&
         (download2_state_tuple != NULL) &&
@@ -523,6 +554,7 @@ static void prv_inbox_received_handler(
         server_status_service_set_download(
             2,
             download2_name_tuple->value->cstring,
+            download2_hash_tuple->value->cstring,
             download2_subtitle_tuple->value->cstring,
             download2_quality_tuple->value->cstring,
             download2_state_tuple->value->cstring,
@@ -589,7 +621,7 @@ static void prv_init(void)
         prv_inbox_received_handler);
 
     const AppMessageResult open_result =
-        app_message_open(1024, 128);
+        app_message_open(1536, 128);
 
     app_focus_service_subscribe(
         prv_app_focus_changed);

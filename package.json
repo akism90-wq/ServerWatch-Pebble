@@ -50,6 +50,7 @@
       "downloadCount",
 
       "download0Name",
+      "download0Hash",
       "download0Subtitle",
       "download0Quality",
       "download0State",
@@ -60,6 +61,7 @@
       "download0Suspicious",
 
       "download1Name",
+      "download1Hash",
       "download1Subtitle",
       "download1Quality",
       "download1State",
@@ -70,6 +72,7 @@
       "download1Suspicious",
 
       "download2Name",
+      "download2Hash",
       "download2Subtitle",
       "download2Quality",
       "download2State",
@@ -81,6 +84,9 @@
 
       "connectionState",
       "refreshRequest",
+      "deleteDownloadHash",
+      "deleteResult",
+      "deleteError",
 
       "attentionCount",
 
