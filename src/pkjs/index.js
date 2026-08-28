@@ -2,6 +2,9 @@
 
 var config = require("./config.local");
 
+var requestInFlight = false;
+var requestSequence = 0;
+
 function isServiceUp(services, name) {
     for (var i = 0; i < services.length; i++) {
         if (services[i].name === name) {
@@ -529,9 +532,28 @@ function sendConnectionState(state) {
     );
 }
 
-function fetchServerStatus() {
+function fetchServerStatus(reason) {
+    if (requestInFlight) {
+        console.log(
+            "ServerWatch fetch skipped while request is in flight: " +
+            reason
+        );
+
+        return;
+    }
+
+    requestInFlight = true;
+
+    var requestId = ++requestSequence;
     var request = new XMLHttpRequest();
     var request_finished = false;
+
+    console.log(
+        "ServerWatch XHR starting #" +
+        requestId +
+        ": " +
+        reason
+    );
 
     request.open(
         "GET",
@@ -554,9 +576,11 @@ function fetchServerStatus() {
         }
 
         request_finished = true;
+        requestInFlight = false;
 
         console.log(
-            "ServerWatch HTTP watchdog expired"
+            "ServerWatch HTTP watchdog expired #" +
+            requestId
         );
 
         sendConnectionState(2);
@@ -577,10 +601,13 @@ function fetchServerStatus() {
         }
 
         request_finished = true;
+        requestInFlight = false;
         clearTimeout(watchdog);
 
         console.log(
-            "ServerWatch HTTP response: " +
+            "ServerWatch HTTP response #" +
+            requestId +
+            ": " +
             request.status
         );
 
@@ -620,10 +647,12 @@ function fetchServerStatus() {
         }
 
         request_finished = true;
+        requestInFlight = false;
         clearTimeout(watchdog);
 
         console.log(
-            "ServerWatch HTTP request failed"
+            "ServerWatch HTTP request failed #" +
+            requestId
         );
 
         sendConnectionState(2);
@@ -635,10 +664,12 @@ function fetchServerStatus() {
 Pebble.addEventListener("ready", function () {
     console.log("ServerWatch PebbleKit JS ready");
 
-    fetchServerStatus();
+    fetchServerStatus("ready");
 
     setInterval(function () {
-        fetchServerStatus();
+        console.log("ServerWatch poll timer fired");
+
+        fetchServerStatus("interval");
     }, 5000);
 });
 
@@ -650,7 +681,7 @@ Pebble.addEventListener(
                 "ServerWatch refresh requested by watch"
             );
 
-            fetchServerStatus();
+            fetchServerStatus("watch refresh");
         }
     }
 );

@@ -12,7 +12,8 @@ struct UpdatedAgeView
 static void prv_refresh(
     UpdatedAgeView *view)
 {
-    if (view == NULL)
+    if ((view == NULL) ||
+        (view->text_layer == NULL))
     {
         return;
     }
@@ -24,6 +25,10 @@ static void prv_refresh(
     text_layer_set_text(
         view->text_layer,
         view->text);
+
+    layer_mark_dirty(
+        text_layer_get_layer(
+            view->text_layer));
 }
 
 static void prv_timer_callback(void *context)

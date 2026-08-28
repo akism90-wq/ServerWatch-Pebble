@@ -517,3 +517,28 @@ bool server_status_service_has_received_snapshot(void)
     return s_status.has_received_snapshot;
 }
 
+bool server_status_service_refresh_connection_freshness(
+    uint32_t stale_after_seconds)
+{
+    if (!s_status.has_received_snapshot)
+    {
+        return false;
+    }
+
+    if (s_status.connection_state !=
+        CONNECTION_STATE_CONNECTED)
+    {
+        return false;
+    }
+
+    if (server_status_service_get_update_age_seconds() <
+        stale_after_seconds)
+    {
+        return false;
+    }
+
+    s_status.connection_state =
+        CONNECTION_STATE_FAILED;
+
+    return true;
+}

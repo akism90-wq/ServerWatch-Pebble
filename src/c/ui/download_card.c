@@ -28,6 +28,18 @@ struct DownloadCard
     char size_display_text[32];
 };
 
+static void prv_mark_text_layer_dirty(
+    TextLayer *text_layer)
+{
+    if (text_layer == NULL)
+    {
+        return;
+    }
+
+    layer_mark_dirty(
+        text_layer_get_layer(text_layer));
+}
+
 static void prv_progress_bar_update(
     Layer *layer,
     GContext *context
@@ -601,6 +613,9 @@ void download_card_set_progress(
         card->progress_text
     );
 
+    prv_mark_text_layer_dirty(
+        card->progress_layer);
+
     if (card->progress_bar_layer != NULL) {
         layer_mark_dirty(
             card->progress_bar_layer
@@ -629,6 +644,9 @@ void download_card_update(
         card->name_layer,
         name != NULL ? name : "");
 
+    prv_mark_text_layer_dirty(
+        card->name_layer);
+
     download_card_set_progress(
         card,
         progress_percent);
@@ -636,6 +654,9 @@ void download_card_update(
     text_layer_set_text(
         card->speed_layer,
         speed_text != NULL ? speed_text : "");
+
+    prv_mark_text_layer_dirty(
+        card->speed_layer);
 
     snprintf(
         card->eta_display_text,
@@ -646,6 +667,9 @@ void download_card_update(
     text_layer_set_text(
         card->eta_layer,
         card->eta_display_text);
+
+    prv_mark_text_layer_dirty(
+        card->eta_layer);
 
     if (size_mb >= 1000U)
     {
@@ -669,6 +693,9 @@ void download_card_update(
     text_layer_set_text(
         card->size_layer,
         card->size_display_text);
+
+    prv_mark_text_layer_dirty(
+        card->size_layer);
 
     if (card->warning_layer != NULL)
     {
@@ -750,10 +777,16 @@ void download_card_update(
         card->subtitle_display_text
     );
 
+    prv_mark_text_layer_dirty(
+        card->subtitle_layer);
+
     text_layer_set_text(
         card->state_layer,
         state != NULL ? state : ""
     );
+
+    prv_mark_text_layer_dirty(
+        card->state_layer);
 }
 
 void download_card_destroy(

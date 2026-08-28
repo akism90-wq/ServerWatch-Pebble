@@ -79,3 +79,6 @@ void server_status_service_set_connection_state(
     ConnectionState state);
 
 bool server_status_service_has_received_snapshot(void);
+
+bool server_status_service_refresh_connection_freshness(
+    uint32_t stale_after_seconds);

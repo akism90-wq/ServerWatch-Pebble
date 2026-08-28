@@ -5,7 +5,63 @@
 #include "windows/storage_window.h"
 #include "windows/downloads_window.h"
 
+#define FRESHNESS_CHECK_INTERVAL_MS 1000
+#define SNAPSHOT_STALE_AFTER_SECONDS 20U
+
 static Window *s_home_window;
+static AppTimer *s_freshness_timer;
+
+static void prv_refresh_all_windows(void)
+{
+    home_window_refresh();
+    attention_window_refresh();
+    server_window_refresh();
+    storage_window_refresh();
+    downloads_window_refresh();
+}
+
+static void prv_freshness_timer_callback(void *context)
+{
+    (void)context;
+
+    s_freshness_timer = NULL;
+
+    bool should_refresh_windows = false;
+
+    if (server_status_service_refresh_connection_freshness(
+            SNAPSHOT_STALE_AFTER_SECONDS))
+    {
+        APP_LOG(
+            APP_LOG_LEVEL_INFO,
+            "Connection freshness expired after %lu seconds",
+            (unsigned long)
+                server_status_service_get_update_age_seconds());
+
+        should_refresh_windows = true;
+    }
+
+    const ServerStatus *const status =
+        server_status_service_get();
+
+    if ((status != NULL) &&
+        status->has_received_snapshot &&
+        (status->connection_state ==
+         CONNECTION_STATE_FAILED))
+    {
+        should_refresh_windows = true;
+    }
+
+    if (should_refresh_windows)
+    {
+        prv_refresh_all_windows();
+    }
+
+    s_freshness_timer =
+        app_timer_register(
+            FRESHNESS_CHECK_INTERVAL_MS,
+            prv_freshness_timer_callback,
+            NULL);
+}
 
 static void prv_set_attention_item_from_message(
     DictionaryIterator *iterator,
@@ -469,13 +525,15 @@ static void prv_inbox_received_handler(
     if (server_name_tuple != NULL)
     {
         server_status_service_mark_updated();
+
+        APP_LOG(
+            APP_LOG_LEVEL_INFO,
+            "Received successful snapshot, age reset to %lu seconds",
+            (unsigned long)
+                server_status_service_get_update_age_seconds());
     }
 
-    home_window_refresh();
-    attention_window_refresh();
-    server_window_refresh();
-    storage_window_refresh();
-    downloads_window_refresh();
+    prv_refresh_all_windows();
 }
 
 static void prv_request_refresh(void)
@@ -525,10 +583,22 @@ static void prv_init(void)
     window_stack_push(s_home_window, true);
 
     prv_request_refresh();
+
+    s_freshness_timer =
+        app_timer_register(
+            FRESHNESS_CHECK_INTERVAL_MS,
+            prv_freshness_timer_callback,
+            NULL);
 }
 
 static void prv_deinit(void)
 {
+    if (s_freshness_timer != NULL)
+    {
+        app_timer_cancel(s_freshness_timer);
+        s_freshness_timer = NULL;
+    }
+
     app_focus_service_unsubscribe();
     home_window_destroy(s_home_window);
     s_home_window = NULL;
